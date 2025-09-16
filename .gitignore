@@ -1,0 +1,40 @@
+# project/.gitignore
+
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+staticfiles/
+
+# Environment variables
+.env
+.env.local
+.env.dev
+.env.prod
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+.coverage
+htmlcov/
+
+# Testing
+.pytest_cache/
+.tox/
