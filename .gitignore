@@ -38,3 +38,8 @@ htmlcov/
 # Testing
 .pytest_cache/
 .tox/
+
+# md file
+convention.md
+data.md
+pro.md
