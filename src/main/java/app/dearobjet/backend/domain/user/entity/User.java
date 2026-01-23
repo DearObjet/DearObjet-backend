@@ -1,5 +1,7 @@
 package app.dearobjet.backend.domain.user.entity;
 
+import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,18 +37,20 @@ public class User {
     @Column(name = "marketing_agreement")
     private Boolean marketingAgreement;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String role;  // CUSTOMER, ARTIST, SHOP
+    private Role role;
 
     @Column(name = "profile_url")
     private String profileUrl;
 
-    @Column(name = "user_status")
-    private String userStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_status", nullable = false)
+    private UserStatus userStatus;
 
-
-    @Column(name = "login_type")
-    private String loginType;  // EMAIL, KAKAO, NAVER, GOOGLE
+    // 카카오 단일
+//    @Column(name = "login_type")
+//    private String loginType;  // EMAIL, KAKAO, NAVER, GOOGLE
 
     @Column(name = "social_id")
     private String socialId;
@@ -58,7 +62,6 @@ public class User {
     }
 
     public void deactivate() {
-        this.userStatus = "INACTIVE";
+        this.userStatus = UserStatus.INACTIVE;
     }
-
 }
