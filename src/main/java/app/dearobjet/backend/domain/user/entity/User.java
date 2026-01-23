@@ -64,4 +64,25 @@ public class User {
     public void deactivate() {
         this.userStatus = UserStatus.INACTIVE;
     }
+
+    public void completeRegistration(
+            String name,
+            String email,
+            String phoneNumber,
+            Boolean smsAgreement,
+            Boolean marketingAgreement,
+            Role role
+    ) {
+        if (this.userStatus != UserStatus.PENDING) {
+            throw new IllegalStateException("User already registered");
+        }
+
+        this.name = name;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.smsAgreement = smsAgreement;
+        this.marketingAgreement = marketingAgreement;
+        this.role = role;
+        this.userStatus = UserStatus.ACTIVE;
+    }
 }
