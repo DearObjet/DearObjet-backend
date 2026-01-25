@@ -1,5 +1,6 @@
 package app.dearobjet.backend.global.auth.security;
 
+import app.dearobjet.backend.global.auth.entrypoint.RestAuthenticationEntryPoint;
 import app.dearobjet.backend.global.auth.jwt.JwtAuthenticationFilter;
 import app.dearobjet.backend.global.auth.oauth.CustomOAuth2UserService;
 import app.dearobjet.backend.global.auth.oauth.OAuthSuccessHandler;
@@ -19,6 +20,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final OAuthSuccessHandler oAuthSuccessHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -27,7 +29,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/oauth2/authorization/**",
