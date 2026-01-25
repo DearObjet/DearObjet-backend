@@ -21,14 +21,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getOrCreateKakaoUser(String socialId) {
         return userRepository.findBySocialId(socialId)
-                .orElseGet(() -> createPendingUser(socialId));
+                .orElseGet(() -> createTempUser(socialId));
     }
 
-    private User createPendingUser(String socialId) {
+    private User createTempUser(String socialId) {
         User user = User.builder()
                 .socialId(socialId)
-                .role(Role.CUSTOMER)
-                .userStatus(UserStatus.PENDING)
+                .role(Role.TEMP)
+                .userStatus(UserStatus.ACTIVE)
                 .build();
 
         return userRepository.save(user);

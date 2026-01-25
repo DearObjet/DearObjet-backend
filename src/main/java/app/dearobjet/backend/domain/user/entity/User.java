@@ -72,7 +72,7 @@ public class User {
             Boolean marketingAgreement,
             Role role
     ) {
-        if (this.userStatus != UserStatus.PENDING) {
+        if (this.role != Role.TEMP) {
             throw new IllegalStateException("User already registered");
         }
 
@@ -82,6 +82,5 @@ public class User {
         this.smsAgreement = smsAgreement;
         this.marketingAgreement = marketingAgreement;
         this.role = role;
-        this.userStatus = UserStatus.ACTIVE;
     }
 }
