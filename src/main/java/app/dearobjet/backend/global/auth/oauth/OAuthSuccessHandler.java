@@ -1,6 +1,7 @@
 package app.dearobjet.backend.global.auth.oauth;
 
 import app.dearobjet.backend.domain.user.entity.User;
+import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.auth.jwt.JwtProvider;
 import jakarta.servlet.http.Cookie;
@@ -34,11 +35,11 @@ public class OAuthSuccessHandler
         // 카카오 고유 ID
         String socialId = oAuth2User.getAttribute("id").toString();
 
-        // 사용자 조회 or 생성 (PENDING)
+        // 사용자 조회 or 생성
         User user = userService.getOrCreateKakaoUser(socialId);
 
         // JWT 발급
-        String accessToken = jwtProvider.createAccessToken(user.getUserId());
+        String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getRole());
 
         Cookie cookie = new Cookie("ACCESS_TOKEN", accessToken);
         cookie.setHttpOnly(true);
@@ -49,9 +50,7 @@ public class OAuthSuccessHandler
         response.addCookie(cookie);
 
         // 프론트로 전달
-        response.sendRedirect(
-                "http://localhost:5173/oauth/callback?token=" + accessToken
-        );
+        response.sendRedirect("http://localhost:5173/oauth/callback");
     }
 }
 

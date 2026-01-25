@@ -1,5 +1,6 @@
 package app.dearobjet.backend.global.auth.jwt;
 
+import app.dearobjet.backend.domain.user.enums.Role;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -23,12 +24,13 @@ public class JwtProvider {
     }
 
     /** Access Token 생성 */
-    public String createAccessToken(Long userId) {
+    public String createAccessToken(Long userId, Role role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
 
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
+                .claim("role", role.name())
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -58,5 +60,16 @@ public class JwtProvider {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public Role getRole(String token) {
+        String role = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
+
+        return Role.valueOf(role);
     }
 }
