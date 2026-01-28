@@ -15,7 +15,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_BACKEND_URL }}
         with:
           args: |
-            :bell: **Pull Request ${{ github.event.action }}**
+            🔔 **Pull Request ${{ github.event.action }}**
             **Repository:** ${{ github.repository }}
             **PR Title:** ${{ github.event.pull_request.title }}
             **Author:** ${{ github.event.pull_request.user.login }}
