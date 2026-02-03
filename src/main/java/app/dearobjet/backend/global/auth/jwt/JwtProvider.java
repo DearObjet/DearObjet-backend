@@ -1,0 +1,96 @@
+package app.dearobjet.backend.global.auth.jwt;
+
+import app.dearobjet.backend.domain.user.enums.Role;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.Date;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class JwtProvider {
+
+    private final JwtProperties jwtProperties;
+
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(
+                jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    /** Access Token 생성 */
+    public String createAccessToken(Long userId, Role role) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
+
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .claim("role", role.name())
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    /** Refresh Token 생성 */
+    public String createRefreshToken(Long userId) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());
+
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    /** 토큰에서 userId 추출 */
+    public Long getUserId(String token) {
+        return Long.valueOf(
+                Jwts.parserBuilder()
+                        .setSigningKey(getSigningKey())
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody()
+                        .getSubject()
+        );
+    }
+
+    /** 토큰 유효성 검증 */
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public Role getRole(String token) {
+        String role = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
+
+        return Role.valueOf(role);
+    }
+
+    public long getRefreshTokenExpiration() {
+        return jwtProperties.getRefreshTokenExpiration();
+    }
+
+    public long getAccessTokenExpiration() {
+        return jwtProperties.getAccessTokenExpiration();
+    }
+}

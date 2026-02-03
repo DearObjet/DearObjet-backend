@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.user.entity;
 
-import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
+import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,13 +19,12 @@ public class User extends BaseTimeEntity {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String email;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String phoneNumber;
 
     @Column(name = "profile_image")
@@ -36,18 +36,20 @@ public class User extends BaseTimeEntity {
     @Column(name = "marketing_agreement")
     private Boolean marketingAgreement;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String role;  // CUSTOMER, ARTIST, SHOP
+    private Role role;
 
     @Column(name = "profile_url")
     private String profileUrl;
 
-    @Column(name = "user_status")
-    private String userStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_status", nullable = false)
+    private UserStatus userStatus;
 
-
-    @Column(name = "login_type")
-    private String loginType;  // EMAIL, KAKAO, NAVER, GOOGLE
+    // 카카오 단일
+//    @Column(name = "login_type")
+//    private String loginType;  // EMAIL, KAKAO, NAVER, GOOGLE
 
     @Column(name = "social_id")
     private String socialId;
@@ -59,7 +61,26 @@ public class User extends BaseTimeEntity {
     }
 
     public void deactivate() {
-        this.userStatus = "INACTIVE";
+        this.userStatus = UserStatus.INACTIVE;
     }
 
+    public void completeRegistration(
+            String name,
+            String email,
+            String phoneNumber,
+            Boolean smsAgreement,
+            Boolean marketingAgreement,
+            Role role
+    ) {
+        if (this.role != Role.TEMP) {
+            throw new IllegalStateException("User already registered");
+        }
+
+        this.name = name;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.smsAgreement = smsAgreement;
+        this.marketingAgreement = marketingAgreement;
+        this.role = role;
+    }
 }
