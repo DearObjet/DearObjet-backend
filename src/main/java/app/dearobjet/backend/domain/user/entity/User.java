@@ -12,7 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 
-public class User {
+public class User extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
