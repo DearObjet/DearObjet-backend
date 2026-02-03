@@ -1,6 +1,6 @@
 package app.dearobjet.backend.global.auth.controller;
 
-import app.dearobjet.backend.global.auth.refresh.RefreshTokenRedisService;
+import app.dearobjet.backend.global.auth.service.RefreshTokenRedisService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
