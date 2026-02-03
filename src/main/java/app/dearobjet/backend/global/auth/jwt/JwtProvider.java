@@ -37,6 +37,19 @@ public class JwtProvider {
                 .compact();
     }
 
+    /** Refresh Token 생성 */
+    public String createRefreshToken(Long userId) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());
+
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     /** 토큰에서 userId 추출 */
     public Long getUserId(String token) {
         return Long.valueOf(
@@ -71,5 +84,13 @@ public class JwtProvider {
                 .get("role", String.class);
 
         return Role.valueOf(role);
+    }
+
+    public long getRefreshTokenExpiration() {
+        return jwtProperties.getRefreshTokenExpiration();
+    }
+
+    public long getAccessTokenExpiration() {
+        return jwtProperties.getAccessTokenExpiration();
     }
 }
