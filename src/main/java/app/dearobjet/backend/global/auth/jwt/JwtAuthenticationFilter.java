@@ -27,7 +27,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         return uri.startsWith("/oauth2")
                 || uri.startsWith("/login")
-                || uri.startsWith("/error");
+                || uri.startsWith("/error")
+                || uri.startsWith("/auth/token/refresh");
     }
 
     @Override
@@ -37,36 +38,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String token = null;
+        String authHeader = request.getHeader("Authorization");
 
-        // 쿠키에서 JWT 추출
-        if (token == null && request.getCookies() != null) {
-            for (var cookie : request.getCookies()) {
-                if ("ACCESS_TOKEN".equals(cookie.getName())) {
-                    token = cookie.getValue();
-                    break;
-                }
-            }
+        // access token 자체가 없는 경우 → 인증 시도 안 함
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // 토큰이 있을 때만 인증 처리
-        if (token != null && jwtProvider.validateToken(token)) {
-            Long userId = jwtProvider.getUserId(token);
+        String token = authHeader.substring(7);
 
-            UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(String.valueOf(userId));
-
-            Authentication authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        // access token이 있는데 유효하지 않으면 → 바로 401
+        if (!jwtProvider.validateToken(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
+
+        Long userId = jwtProvider.getUserId(token);
+
+        UserDetails userDetails =
+                userDetailsService.loadUserByUsername(String.valueOf(userId));
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
     }
 }
-
