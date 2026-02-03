@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.user.entity;
 
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
+import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
