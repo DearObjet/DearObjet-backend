@@ -1,4 +1,4 @@
-package app.dearobjet.backend.global.auth.refresh;
+package app.dearobjet.backend.global.auth.service;
 
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
