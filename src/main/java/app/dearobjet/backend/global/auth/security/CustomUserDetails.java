@@ -18,7 +18,7 @@ import org.springframework.security.core.userdetails.UserDetails;
     }
 
     public Long getUserId() {
-        return user.getUserId();
+        return user.getId();
     }
 
     public Role getRole() {
@@ -50,7 +50,7 @@ import org.springframework.security.core.userdetails.UserDetails;
      */
     @Override
     public String getUsername() {
-        return String.valueOf(user.getUserId());
+        return String.valueOf(user.getId());
     }
 
     /**
