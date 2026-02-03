@@ -35,6 +35,11 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 logging:
   level:
     org.hibernate.SQL: debug
@@ -43,3 +48,4 @@ logging:
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: 3600000 # 1시간(ms)
+  refresh-token-expiration: 1209600000  # 14일 (ms)
