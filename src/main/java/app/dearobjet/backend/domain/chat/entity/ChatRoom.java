@@ -83,7 +83,7 @@ public class ChatRoom extends BaseTimeEntity {
         ChatRoom room = new ChatRoom();
         room.roomId = UUID.randomUUID().toString();
         room.type = ChatRoomType.ONE_TO_ONE;
-        room.participantHash = generateParticipantHash(user1.getUserId(), user2.getUserId());
+        room.participantHash = generateParticipantHash(user1.getId(), user2.getId());
         room.lastMessage = "";
 
         // 참여자 추가 (양방향 연관관계 설정)
@@ -108,7 +108,7 @@ public class ChatRoom extends BaseTimeEntity {
                 .roomId(UUID.randomUUID().toString())
                 .type(ChatRoomType.GROUP)
                 .participantHash(generateParticipantHash(users.stream()
-                        .map(User::getUserId)
+                        .map(User::getId)
                         .toArray(Long[]::new)))
                 .lastMessage("")
                 .build();
@@ -138,7 +138,7 @@ public class ChatRoom extends BaseTimeEntity {
      */
     public void incrementUnreadCount(Long senderUserId) {
         participants.stream()
-                .filter(p -> !p.getUser().getUserId().equals(senderUserId))
+                .filter(p -> !p.getUser().getId().equals(senderUserId))
                 .forEach(ChatParticipant::incrementUnreadCount);
     }
 
@@ -165,7 +165,7 @@ public class ChatRoom extends BaseTimeEntity {
         if (user1 == null || user2 == null) {
             throw new IllegalArgumentException("사용자 정보는 필수입니다.");
         }
-        if (user1.getUserId().equals(user2.getUserId())) {
+        if (user1.getId().equals(user2.getId())) {
             throw new IllegalArgumentException("자기 자신과는 채팅방을 만들 수 없습니다.");
         }
     }
