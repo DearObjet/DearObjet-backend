@@ -2,6 +2,9 @@ spring:
   application:
     name: backend
 
+  profiles:
+    active: local # 인증인가가 필요하다면 prod로 변경
+
   config:
     import: optional:file:.env[.properties]
 
