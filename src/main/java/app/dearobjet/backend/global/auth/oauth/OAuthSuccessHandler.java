@@ -40,12 +40,12 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         User user = userService.getOrCreateKakaoUser(socialId);
 
         // refresh token 발급
-        String refreshToken = jwtProvider.createRefreshToken(user.getUserId());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
         // Redis 저장
         refreshTokenRedisService.save(
                 refreshToken,
-                user.getUserId(),
+                user.getId(),
                 jwtProvider.getRefreshTokenExpiration()
         );
 

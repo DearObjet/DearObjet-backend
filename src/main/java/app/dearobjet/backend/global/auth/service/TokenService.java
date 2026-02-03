@@ -34,15 +34,15 @@ public class TokenService {
 
         // 5. 새 토큰 발급
         String newAccessToken =
-                jwtProvider.createAccessToken(user.getUserId(), user.getRole());
+                jwtProvider.createAccessToken(user.getId(), user.getRole());
 
         String newRefreshToken =
-                jwtProvider.createRefreshToken(user.getUserId());
+                jwtProvider.createRefreshToken(user.getId());
 
         // 6. 새 refresh Redis 저장
         refreshTokenRedisService.save(
                 newRefreshToken,
-                user.getUserId(),
+                user.getId(),
                 jwtProvider.getRefreshTokenExpiration()
         );
 
