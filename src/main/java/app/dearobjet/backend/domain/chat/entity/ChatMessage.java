@@ -4,8 +4,6 @@ import app.dearobjet.backend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "chat_messages")
 @Getter
@@ -17,7 +15,7 @@ public class ChatMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "chat_messages_id")
-    private Long id;
+    private Long chatMessagesId;
 
     @Column(name = "message_type")
     private String messageType;  // TEXT, IMAGE, FILE
@@ -26,7 +24,7 @@ public class ChatMessage {
     private String content;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private java.time.LocalDateTime createdAt;
 
     @Column(name = "is_read")
     private Boolean isRead;
