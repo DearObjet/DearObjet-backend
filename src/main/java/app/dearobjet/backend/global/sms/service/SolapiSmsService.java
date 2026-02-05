@@ -10,13 +10,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-public class SmsService {
+public class SolapiSmsService {
 
     private final DefaultMessageService messageService;
     private final String fromNumber;
 
-    public SmsService(DefaultMessageService messageService,
-                      @Value("${solapi.from-number}") String fromNumber) {
+    public SolapiSmsService(DefaultMessageService messageService,
+                            @Value("${solapi.from-number}") String fromNumber) {
         this.messageService = messageService;
         this.fromNumber = fromNumber;
     }
