@@ -3,7 +3,7 @@ spring:
     name: backend
 
   profiles:
-    active: prod # 인증인가가 필요하다면 prod로 변경
+    active: dev # 인증인가가 필요하다면 prod로 변경
 
   config:
     import: optional:file:.env[.properties]
@@ -56,3 +56,7 @@ jwt:
 app:
   frontend:
     base-url: ${FRONTEND_BASE_URL}
+
+nts:
+  api:
+    service-key: ${NTS_SERVICE_KEY}
