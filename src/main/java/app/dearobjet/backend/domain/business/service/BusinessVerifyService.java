@@ -14,27 +14,29 @@ public class BusinessVerifyService {
     private final NtsRestClient ntsRestClient;
 
     public boolean verify(BusinessVerifyRequest req) {
-        NtsValidateRequest.NtsBusiness business = new NtsValidateRequest.NtsBusiness(
-                req.getBNo(),
-                req.getStartDt(),
-                req.getPNm(),
-                "", // p_nm2: 일반 내국인은 무조건 빈 문자열
-                nv(req.getBNm()),
-                nv(req.getCorpNo()),
-                nv(req.getBSector()),
-                nv(req.getBType()),
-                nv(req.getBAdr())
-        );
 
-        NtsValidateRequest ntsRequest = new NtsValidateRequest(List.of(business));
-        NtsValidateResponse response = ntsRestClient.validate(ntsRequest);
+        NtsValidateRequest.NtsBusiness business =
+                new NtsValidateRequest.NtsBusiness(
+                        req.getBusinessNumber(),                 // b_no
+                        req.getOpeningDate().replace("-", ""),   // start_dt (yyyyMMdd)
+                        req.getOwnerName(),                      // p_nm
+                        "",                                      // p_nm2 (내국인)
+                        "",                                      // b_nm
+                        "",                                      // corp_no
+                        "",                                      // b_sector
+                        "",                                      // b_type
+                        ""                                       // b_adr
+                );
 
-        return response != null && !response.getData().isEmpty()
+        NtsValidateRequest ntsRequest =
+                new NtsValidateRequest(List.of(business));
+
+        NtsValidateResponse response =
+                ntsRestClient.validate(ntsRequest);
+
+        return response != null
+                && response.getData() != null
+                && !response.getData().isEmpty()
                 && "01".equals(response.getData().get(0).getValid());
-    }
-
-    // 필수 아닌 항목은 null 대신 ""으로 전송
-    private String nv(String v) {
-        return (v == null) ? "" : v;
     }
 }
