@@ -57,6 +57,10 @@ app:
   frontend:
     base-url: ${FRONTEND_BASE_URL}
 
+nts:
+  api:
+    service-key: ${NTS_SERVICE_KEY}
+
 solapi:
   api-key: ${SOLAPI_API_KEY}
   api-secret: ${SOLAPI_API_SECRET}
