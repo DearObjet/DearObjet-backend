@@ -48,7 +48,25 @@ public class SmsAuthService {
             throw new IllegalArgumentException("인증번호가 일치하지 않습니다");
         }
 
+        redisService.markVerified(phone);
+
         redisService.deleteCode(phone);
+    }
+
+    /**
+     * 민감 기능 전에 호출
+     */
+    public void assertVerified(String phone) {
+        if (!redisService.isVerified(phone)) {
+            throw new IllegalStateException("휴대폰 인증이 필요합니다");
+        }
+    }
+
+    /**
+     * 사용 후 재사용 방지
+     */
+    public void consumeVerified(String phone) {
+        redisService.clearVerified(phone);
     }
 }
 
