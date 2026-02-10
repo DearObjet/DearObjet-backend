@@ -21,5 +21,7 @@ public interface UserService {
 
     // 회원 비활성화
     void deactivateUser(Long userId);
+
+    void changePhone(Long userId, String newPhone);
 }
 

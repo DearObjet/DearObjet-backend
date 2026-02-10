@@ -13,7 +13,7 @@ public class SmsVerificationRedisService {
 
     private final StringRedisTemplate redisTemplate;
 
-    private static final Duration TTL = Duration.ofMinutes(3);
+    private static final Duration VERIFIED_TTL = Duration.ofMinutes(5);
 
     public void saveCode(String phoneNumber, String code) {
         redisTemplate.opsForValue().set(
@@ -30,6 +30,18 @@ public class SmsVerificationRedisService {
     public void deleteCode(String phone) {
         redisTemplate.delete(key("verify", phone));
         redisTemplate.delete(key("attempt", phone));
+    }
+
+    public void markVerified(String phone) {
+        redisTemplate.opsForValue().set(
+                key("verified", phone),
+                "true",
+                VERIFIED_TTL
+        );
+    }
+
+    public boolean isVerified(String phone) {
+        return redisTemplate.hasKey(key("verified", phone));
     }
 
     public int increaseAttempt(String phone) {
@@ -58,6 +70,11 @@ public class SmsVerificationRedisService {
 
     private String key(String type, String phoneNumber) {
         return "sms:" + type + ":" + phoneNumber;
+    }
+
+
+    public void clearVerified(String phone) {
+        redisTemplate.delete(key("verified", phone));
     }
 }
 
