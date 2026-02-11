@@ -2,7 +2,7 @@ package app.dearobjet.backend.domain.chat.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-
+// test
 @Getter
 @AllArgsConstructor
 public class CreateChatRoomResponse {
