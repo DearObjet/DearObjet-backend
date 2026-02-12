@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.user.entity;
 
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
+import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,20 +13,19 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 
-public class User {
+public class User extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private Long userId;
+    private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String email;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String phoneNumber;
 
     @Column(name = "profile_image")
@@ -73,7 +73,7 @@ public class User {
             Boolean marketingAgreement,
             Role role
     ) {
-        if (this.userStatus != UserStatus.PENDING) {
+        if (this.role != Role.TEMP) {
             throw new IllegalStateException("User already registered");
         }
 
@@ -83,6 +83,9 @@ public class User {
         this.smsAgreement = smsAgreement;
         this.marketingAgreement = marketingAgreement;
         this.role = role;
-        this.userStatus = UserStatus.ACTIVE;
+    }
+
+    public void changePhone(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 }
