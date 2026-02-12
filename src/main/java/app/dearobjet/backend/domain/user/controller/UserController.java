@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.user.controller;
 
+import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
 import app.dearobjet.backend.domain.user.dto.CompleteSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
@@ -15,24 +16,29 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     private final UserService userService;
 
-    /**
-     * 추가 회원가입 (TEMP → CUSTOMER / ARTIST / SHOP)
-     */
-    @PostMapping("/complete")
-    public ResponseEntity<ApiResponse<Void>> completeSignup(
+    // CUSTOMER 가입 완료
+    @PostMapping("/complete/customer")
+    public ResponseEntity<ApiResponse<Void>> completeCustomerSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CompleteSignupRequest request
     ) {
-        Long userId = userDetails.getUserId();
+        userService.completeCustomerSignup(
+                userDetails.getUserId(),
+                request
+        );
 
-        userService.completeSignup(
-                userId,
-                request.getName(),
-                request.getEmail(),
-                request.getPhoneNumber(),
-                request.getSmsAgreement(),
-                request.getMarketingAgreement(),
-                request.getRole()
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
+    // ARTIST 가입 완료
+    @PostMapping("/complete/artist")
+    public ResponseEntity<ApiResponse<Void>> completeArtistSignup(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody ArtistSignupRequest request
+    ) {
+        userService.completeArtistSignup(
+                userDetails.getUserId(),
+                request
         );
 
         return ResponseEntity.ok(ApiResponse.of(null));

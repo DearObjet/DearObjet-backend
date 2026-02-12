@@ -16,7 +16,7 @@ public class Artist extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "artists_id")
-    private Long artistsId;
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
@@ -25,9 +25,11 @@ public class Artist extends BaseTimeEntity {
     @Column(name = "business_number")
     private String businessNumber;
 
+    // 상호명
     @Column(name = "business_name")
     private String businessName;
 
+    // 대표자명
     @Column(name = "owner_name")
     private String ownerName;
 
@@ -37,8 +39,8 @@ public class Artist extends BaseTimeEntity {
     @Column(name = "portfolio_url")
     private String portfolioUrl;
 
-    @Column(name = "field6")
-    private String field6;
+    @Column(name = "specialty")
+    private String specialty;
 
     // 비즈니스 메서드
     public void updateProfile(String businessName, String bio, String portfolioUrl) {

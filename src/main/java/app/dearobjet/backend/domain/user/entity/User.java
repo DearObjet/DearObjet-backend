@@ -84,6 +84,23 @@ public class User extends BaseTimeEntity {
         this.marketingAgreement = marketingAgreement;
         this.role = role;
     }
+    public void changeRole(Role role) {
+        this.role = role;
+    }
+
+    public void completeProfile(
+            String name,
+            String email,
+            String phoneNumber,
+            Boolean smsAgreement,
+            Boolean marketingAgreement
+    ) {
+        this.name = name;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.smsAgreement = smsAgreement;
+        this.marketingAgreement = marketingAgreement;
+    }
 
     public void changePhone(String phoneNumber) {
         this.phoneNumber = phoneNumber;

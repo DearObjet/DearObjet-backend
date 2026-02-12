@@ -1,22 +1,24 @@
 package app.dearobjet.backend.domain.user.service;
 
+import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
+import app.dearobjet.backend.domain.user.dto.CompleteSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
-import app.dearobjet.backend.domain.user.enums.Role;
 
 public interface UserService {
 
     // 카카오 OAuth 사용자 조회 또는 신규 생성
     User getOrCreateKakaoUser(String socialId);
 
-    // 추가 회원가입
-    void completeSignup(
+    // CUSTOMER 가입
+    void completeCustomerSignup(
             Long userId,
-            String name,
-            String email,
-            String phoneNumber,
-            Boolean smsAgreement,
-            Boolean marketingAgreement,
-            Role role
+            CompleteSignupRequest request
+    );
+
+    // ARTIST 가입
+    void completeArtistSignup(
+            Long userId,
+            ArtistSignupRequest request
     );
 
     // 회원 비활성화
