@@ -1,7 +1,8 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
-import app.dearobjet.backend.domain.user.dto.CompleteSignupRequest;
+import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
+import app.dearobjet.backend.domain.user.dto.ShopSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 
 public interface UserService {
@@ -12,13 +13,18 @@ public interface UserService {
     // CUSTOMER 가입
     void completeCustomerSignup(
             Long userId,
-            CompleteSignupRequest request
+            CustomerSignupRequest request
     );
 
     // ARTIST 가입
     void completeArtistSignup(
             Long userId,
             ArtistSignupRequest request
+    );
+
+    void completeShopSignup(
+            Long userId,
+            ShopSignupRequest request
     );
 
     // 회원 비활성화

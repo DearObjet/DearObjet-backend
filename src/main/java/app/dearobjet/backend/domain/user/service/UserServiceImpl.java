@@ -1,17 +1,18 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
-import app.dearobjet.backend.domain.user.dto.CompleteSignupRequest;
+import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
+import app.dearobjet.backend.domain.user.dto.ShopSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
+import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
-import app.dearobjet.backend.global.auth.security.CustomUserDetails;
 import app.dearobjet.backend.global.sms.service.SmsAuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
+    private final ShopRepository shopRepository;
 
     private final SmsAuthService smsAuthService;
 
@@ -46,7 +48,7 @@ public class UserServiceImpl implements UserService {
 
 
     // 일반 유저 회원가입
-    public void completeCustomerSignup(Long userId, CompleteSignupRequest request) {
+    public void completeCustomerSignup(Long userId, CustomerSignupRequest request) {
 
         User user = getUser(userId);
 
@@ -89,6 +91,35 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         artistRepository.save(artist);
+    }
+
+    public void completeShopSignup(
+            Long userId,
+            ShopSignupRequest request
+    ) {
+        User user = getUser(userId);
+
+        user.completeProfile(
+                request.getName(),
+                request.getEmail(),
+                request.getPhoneNumber(),
+                request.getSmsAgreement(),
+                request.getMarketingAgreement()
+        );
+
+        user.changeRole(Role.SHOP);
+
+        Shop shop = Shop.builder()
+                .user(user)
+                .businessNumber(request.getBusinessNumber())
+                .businessName(request.getBusinessName())
+                .ownerName(request.getOwnerName())
+                .shopName(request.getShopName())
+                .shopDescription(request.getShopDescription())
+                .address(request.getAddress())
+                .build();
+
+        shopRepository.save(shop);
     }
 
     /**

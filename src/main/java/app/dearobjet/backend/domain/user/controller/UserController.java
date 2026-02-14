@@ -1,7 +1,8 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
-import app.dearobjet.backend.domain.user.dto.CompleteSignupRequest;
+import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
+import app.dearobjet.backend.domain.user.dto.ShopSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -14,13 +15,14 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
+
     private final UserService userService;
 
     // CUSTOMER 가입 완료
     @PostMapping("/complete/customer")
     public ResponseEntity<ApiResponse<Void>> completeCustomerSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody CompleteSignupRequest request
+            @RequestBody CustomerSignupRequest request
     ) {
         userService.completeCustomerSignup(
                 userDetails.getUserId(),
@@ -37,6 +39,20 @@ public class UserController {
             @RequestBody ArtistSignupRequest request
     ) {
         userService.completeArtistSignup(
+                userDetails.getUserId(),
+                request
+        );
+
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
+    // SHOP 가입 완료
+    @PostMapping("/complete/shop")
+    public ResponseEntity<ApiResponse<Void>> completeShopSignup(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody ShopSignupRequest request
+    ) {
+        userService.completeShopSignup(
                 userDetails.getUserId(),
                 request
         );

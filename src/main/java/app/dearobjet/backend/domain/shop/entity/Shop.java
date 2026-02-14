@@ -11,7 +11,6 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-
 public class Shop extends BaseTimeEntity {
 
     @Id
@@ -23,14 +22,21 @@ public class Shop extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
+    // 사업자 정보
+    @Column(name = "business_number", nullable = false, unique = true)
+    private String businessNumber;
+
+    @Column(name = "business_name")
+    private String businessName;
+
+    @Column(name = "owner_name")
+    private String ownerName;
+
     @Column(name = "shop_name")
     private String shopName;
 
     @Column(name = "shop_description")
     private String shopDescription;
-
-    @Column(name = "phone_number")
-    private String phoneNumber;
 
     private String address;
 }
