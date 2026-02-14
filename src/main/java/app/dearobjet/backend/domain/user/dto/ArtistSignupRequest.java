@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.user.dto;
 
+import app.dearobjet.backend.domain.user.enums.Specialty;
 import lombok.Getter;
 
 @Getter
@@ -18,6 +19,6 @@ public class ArtistSignupRequest {
     private String ownerName;
     private String bio;
     private String portfolioUrl;
-    private String specialty;
+    private Specialty specialty;
 }
 
