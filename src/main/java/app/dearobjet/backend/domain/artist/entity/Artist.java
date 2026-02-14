@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.artist.entity;
 
 import app.dearobjet.backend.domain.user.entity.User;
+import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -39,8 +40,9 @@ public class Artist extends BaseTimeEntity {
     @Column(name = "portfolio_url")
     private String portfolioUrl;
 
-    @Column(name = "specialty")
-    private String specialty;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "specialty", nullable = false)
+    private Specialty specialty;
 
     // 비즈니스 메서드
     public void updateProfile(String businessName, String bio, String portfolioUrl) {
