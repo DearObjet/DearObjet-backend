@@ -3,13 +3,16 @@ package app.dearobjet.backend.domain.user.service;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
-import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
+import app.dearobjet.backend.global.exception.DuplicateEntityException;
+import app.dearobjet.backend.global.exception.EntityNotFoundException;
+import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.sms.service.SmsAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,9 +50,13 @@ public class UserServiceImpl implements UserService {
 
 
     // 일반 유저 회원가입
-    public void completeCustomerSignup(Long userId, CustomerSignupRequest request) {
+    public void completeSignup(Long userId, UserSignupRequest request) {
 
         User user = getUser(userId);
+
+        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new DuplicateEntityException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
 
         user.completeRegistration(
                 request.getName(),
@@ -58,13 +65,16 @@ public class UserServiceImpl implements UserService {
                 request.getMarketingAgreement()
         );
 
-        user.changeRole(Role.CUSTOMER);
+        user.changeRole(Role.USER);
     }
 
-    @Transactional
     public void completeArtistSignup(Long userId, BusinessSignupRequest request) {
 
         User user = getUser(userId);
+
+        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new DuplicateEntityException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -91,10 +101,13 @@ public class UserServiceImpl implements UserService {
         artistRepository.save(artist);
     }
 
-    @Transactional
     public void completeShopSignup(Long userId, BusinessSignupRequest request) {
 
         User user = getUser(userId);
+
+        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new DuplicateEntityException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -126,8 +139,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public void deactivateUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = getUser(userId);
 
         user.deactivate();
     }
@@ -138,8 +150,7 @@ public class UserServiceImpl implements UserService {
         // 1. 서버 기준 인증 확인
         smsAuthService.assertVerified(newPhone);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = getUser(userId);
 
         user.changePhone(newPhone);
 
@@ -149,6 +160,6 @@ public class UserServiceImpl implements UserService {
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
     }
 }
