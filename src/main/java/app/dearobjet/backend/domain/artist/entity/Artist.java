@@ -60,6 +60,9 @@ public class Artist extends BaseTimeEntity {
     @Column(name = "specialty", nullable = false)
     private Specialty specialty;
 
+    @Column(name="review_data_agreement", nullable=false)
+    private Boolean reviewDataAgreement = false;
+
     // 비즈니스 메서드
     public void updateProfile(String businessName, String bio, String portfolioUrl) {
         this.businessName = businessName;

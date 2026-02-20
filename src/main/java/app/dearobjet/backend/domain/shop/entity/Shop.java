@@ -58,4 +58,7 @@ public class Shop extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "specialty", nullable = false)
     private Specialty specialty;
+
+    @Column(name="review_data_agreement", nullable=false)
+    private Boolean reviewDataAgreement = false;
 }

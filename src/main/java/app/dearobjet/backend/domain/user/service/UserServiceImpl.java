@@ -85,6 +85,7 @@ public class UserServiceImpl implements UserService {
                 .businessType(request.getBusinessType())
                 .businessCategory(request.getBusinessCategory())
                 .specialty(request.getSpecialty())
+                .reviewDataAgreement(Boolean.TRUE.equals(request.getReviewDataAgreement()))
                 .build();
 
         artistRepository.save(artist);
@@ -114,6 +115,7 @@ public class UserServiceImpl implements UserService {
                 .businessType(request.getBusinessType())
                 .businessCategory(request.getBusinessCategory())
                 .specialty(request.getSpecialty())
+                .reviewDataAgreement(Boolean.TRUE.equals(request.getReviewDataAgreement()))
                 .build();
 
         shopRepository.save(shop);

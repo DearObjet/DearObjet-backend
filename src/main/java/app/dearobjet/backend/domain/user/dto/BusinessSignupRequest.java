@@ -33,4 +33,6 @@ public class BusinessSignupRequest {
     private BusinessType businessType;
     private BusinessCategory businessCategory;
     private Specialty specialty;
+
+    private Boolean reviewDataAgreement;
 }
