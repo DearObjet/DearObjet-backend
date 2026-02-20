@@ -1,0 +1,71 @@
+package app.dearobjet.backend.global.sms.service;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class SmsAuthServiceTest {
+
+    @Mock
+    SolapiSmsService smsService;
+
+    @Mock
+    SmsVerificationRedisService redisService;
+
+    @InjectMocks
+    SmsAuthService smsAuthService;
+
+    @Test
+    void 인증번호_발송_정상() {
+
+        smsAuthService.sendVerificationCode("01012345678");
+
+        verify(redisService).saveCode(any(), any());
+        verify(redisService).applyCooldown(any());
+        verify(smsService).sendSms(any(), contains("인증번호"));
+    }
+
+    @Test
+    void 쿨타임중이면_차단() {
+
+        when(redisService.isCooldown("01012345678")).thenReturn(true);
+
+        assertThatThrownBy(() ->
+                smsAuthService.sendVerificationCode("01012345678")
+        ).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void 인증번호_불일치() {
+
+        when(redisService.getCode("01012345678")).thenReturn("123456");
+        when(redisService.increaseAttempt("01012345678")).thenReturn(1);
+
+        assertThatThrownBy(() ->
+                smsAuthService.verifyCode("01012345678", "000000")
+        ).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void 인증시도_초과() {
+
+        when(redisService.getCode("01012345678")).thenReturn("123456");
+        when(redisService.increaseAttempt("01012345678")).thenReturn(6);
+
+        assertThatThrownBy(() ->
+                smsAuthService.verifyCode("01012345678", "123456")
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(redisService).deleteCode("01012345678");
+    }
+}
+

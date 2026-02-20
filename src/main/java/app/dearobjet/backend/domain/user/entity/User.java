@@ -84,4 +84,8 @@ public class User extends BaseTimeEntity {
         this.marketingAgreement = marketingAgreement;
         this.role = role;
     }
+
+    public void changePhone(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
 }

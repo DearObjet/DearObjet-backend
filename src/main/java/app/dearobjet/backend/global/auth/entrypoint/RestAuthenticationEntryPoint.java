@@ -2,6 +2,7 @@ package app.dearobjet.backend.global.auth.entrypoint;
 
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.api.ErrorResponse;
+import app.dearobjet.backend.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +27,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType("application/json;charset=UTF-8");
 
         ApiResponse<ErrorResponse> body =
-                ApiResponse.of(new ErrorResponse("로그인이 필요합니다"));
+                ApiResponse.of(ErrorResponse.of(ErrorCode.UNAUTHORIZED));
 
         response.getWriter().write(
                 objectMapper.writeValueAsString(body)

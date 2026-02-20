@@ -62,6 +62,7 @@ public class ChatRoom extends BaseTimeEntity {
      * 채팅방 참여자 목록
      * Cascade: 채팅방 삭제 시 참여자 정보도 함께 삭제
      */
+    @Builder.Default
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatParticipant> participants = new ArrayList<>();
 
@@ -80,11 +81,12 @@ public class ChatRoom extends BaseTimeEntity {
     public static ChatRoom createOneToOne(User user1, User user2) {
         validateUsers(user1, user2);
 
-        ChatRoom room = new ChatRoom();
-        room.roomId = UUID.randomUUID().toString();
-        room.type = ChatRoomType.ONE_TO_ONE;
-        room.participantHash = generateParticipantHash(user1.getId(), user2.getId());
-        room.lastMessage = "";
+        ChatRoom room = ChatRoom.builder()
+                .roomId(UUID.randomUUID().toString())
+                .type(ChatRoomType.ONE_TO_ONE)
+                .participantHash(generateParticipantHash(user1.getId(), user2.getId()))
+                .lastMessage("")
+                .build();
 
         // 참여자 추가 (양방향 연관관계 설정)
         room.addParticipant(user1);
@@ -104,7 +106,7 @@ public class ChatRoom extends BaseTimeEntity {
             throw new IllegalArgumentException("그룹 채팅은 최소 3명 이상이어야 합니다.");
         }
 
-        ChatRoom room = new ChatRoom().builder()
+        ChatRoom room = ChatRoom.builder()
                 .roomId(UUID.randomUUID().toString())
                 .type(ChatRoomType.GROUP)
                 .participantHash(generateParticipantHash(users.stream()
