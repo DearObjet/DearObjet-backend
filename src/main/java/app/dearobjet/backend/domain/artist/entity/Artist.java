@@ -1,6 +1,8 @@
 package app.dearobjet.backend.domain.artist.entity;
 
 import app.dearobjet.backend.domain.user.entity.User;
+import app.dearobjet.backend.domain.user.enums.BusinessCategory;
+import app.dearobjet.backend.domain.user.enums.BusinessType;
 import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -34,11 +36,25 @@ public class Artist extends BaseTimeEntity {
     @Column(name = "owner_name")
     private String ownerName;
 
+    @Column(name = "business_adress")
+    private String businessAddress;
+
+    @Column(name = "business_license_url")
+    private String businessLicenseUrl;
+
     @Column(columnDefinition = "TEXT")
     private String bio;
 
     @Column(name = "portfolio_url")
     private String portfolioUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_type", nullable = false)
+    private BusinessType businessType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_category", nullable = false)
+    private BusinessCategory businessCategory;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "specialty", nullable = false)

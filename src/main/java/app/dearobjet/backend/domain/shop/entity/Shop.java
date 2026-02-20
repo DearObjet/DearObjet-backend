@@ -1,6 +1,9 @@
 package app.dearobjet.backend.domain.shop.entity;
 
 import app.dearobjet.backend.domain.user.entity.User;
+import app.dearobjet.backend.domain.user.enums.BusinessCategory;
+import app.dearobjet.backend.domain.user.enums.BusinessType;
+import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,8 +32,14 @@ public class Shop extends BaseTimeEntity {
     @Column(name = "business_name")
     private String businessName;
 
+    @Column(name = "business_adress")
+    private String businessAddress;
+
     @Column(name = "owner_name")
     private String ownerName;
+
+    @Column(name = "business_license_url")
+    private String businessLicenseUrl;
 
     @Column(name = "shop_name")
     private String shopName;
@@ -38,5 +47,15 @@ public class Shop extends BaseTimeEntity {
     @Column(name = "shop_description")
     private String shopDescription;
 
-    private String address;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_type", nullable = false)
+    private BusinessType businessType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_category", nullable = false)
+    private BusinessCategory businessCategory;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "specialty", nullable = false)
+    private Specialty specialty;
 }

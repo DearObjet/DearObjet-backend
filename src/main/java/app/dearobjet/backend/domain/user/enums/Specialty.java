@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.user.enums;
 
+// 주요 카테고리
 public enum Specialty {
 
     STATIONERY_PAPER,          // 문구·페이퍼 소품
