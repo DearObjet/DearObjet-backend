@@ -1,8 +1,7 @@
 package app.dearobjet.backend.domain.user.controller;
 
-import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
+import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
 import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
-import app.dearobjet.backend.domain.user.dto.ShopSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -36,7 +35,7 @@ public class UserController {
     @PostMapping("/complete/artist")
     public ResponseEntity<ApiResponse<Void>> completeArtistSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ArtistSignupRequest request
+            @RequestBody BusinessSignupRequest request
     ) {
         userService.completeArtistSignup(
                 userDetails.getUserId(),
@@ -50,9 +49,9 @@ public class UserController {
     @PostMapping("/complete/shop")
     public ResponseEntity<ApiResponse<Void>> completeShopSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ShopSignupRequest request
+            @RequestBody BusinessSignupRequest request
     ) {
-        userService.completeShopSignup(
+        userService.completeArtistSignup(
                 userDetails.getUserId(),
                 request
         );

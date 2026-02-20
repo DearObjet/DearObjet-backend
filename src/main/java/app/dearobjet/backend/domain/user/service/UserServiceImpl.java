@@ -2,9 +2,8 @@ package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.shop.entity.Shop;
-import app.dearobjet.backend.domain.user.dto.ArtistSignupRequest;
+import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
 import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
-import app.dearobjet.backend.domain.user.dto.ShopSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
@@ -52,9 +51,8 @@ public class UserServiceImpl implements UserService {
 
         User user = getUser(userId);
 
-        user.completeProfile(
+        user.completeRegistration(
                 request.getName(),
-                request.getEmail(),
                 request.getPhoneNumber(),
                 request.getSmsAgreement(),
                 request.getMarketingAgreement()
@@ -63,16 +61,13 @@ public class UserServiceImpl implements UserService {
         user.changeRole(Role.CUSTOMER);
     }
 
-    public void completeArtistSignup(
-            Long userId,
-            ArtistSignupRequest request
-    ) {
+    @Transactional
+    public void completeArtistSignup(Long userId, BusinessSignupRequest request) {
 
         User user = getUser(userId);
 
-        user.completeProfile(
-                request.getName(),
-                request.getEmail(),
+        user.completeRegistration(
+                request.getOwnerName(),
                 request.getPhoneNumber(),
                 request.getSmsAgreement(),
                 request.getMarketingAgreement()
@@ -85,23 +80,23 @@ public class UserServiceImpl implements UserService {
                 .businessNumber(request.getBusinessNumber())
                 .businessName(request.getBusinessName())
                 .ownerName(request.getOwnerName())
-                .bio(request.getBio())
-                .portfolioUrl(request.getPortfolioUrl())
+                .businessAddress(request.getBusinessAddress())
+                .businessLicenseUrl(request.getBusinessLicenseUrl())
+                .businessType(request.getBusinessType())
+                .businessCategory(request.getBusinessCategory())
                 .specialty(request.getSpecialty())
                 .build();
 
         artistRepository.save(artist);
     }
 
-    public void completeShopSignup(
-            Long userId,
-            ShopSignupRequest request
-    ) {
+    @Transactional
+    public void completeShopSignup(Long userId, BusinessSignupRequest request) {
+
         User user = getUser(userId);
 
-        user.completeProfile(
-                request.getName(),
-                request.getEmail(),
+        user.completeRegistration(
+                request.getOwnerName(),
                 request.getPhoneNumber(),
                 request.getSmsAgreement(),
                 request.getMarketingAgreement()
@@ -114,9 +109,11 @@ public class UserServiceImpl implements UserService {
                 .businessNumber(request.getBusinessNumber())
                 .businessName(request.getBusinessName())
                 .ownerName(request.getOwnerName())
-                .shopName(request.getShopName())
-                .shopDescription(request.getShopDescription())
-                .address(request.getAddress())
+                .businessAddress(request.getBusinessAddress())
+                .businessLicenseUrl(request.getBusinessLicenseUrl())
+                .businessType(request.getBusinessType())
+                .businessCategory(request.getBusinessCategory())
+                .specialty(request.getSpecialty())
                 .build();
 
         shopRepository.save(shop);
