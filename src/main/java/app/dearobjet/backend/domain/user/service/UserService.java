@@ -1,7 +1,7 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
-import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 
 public interface UserService {
@@ -10,9 +10,9 @@ public interface UserService {
     User getOrCreateKakaoUser(String socialId);
 
     // CUSTOMER 가입
-    void completeCustomerSignup(
+    void completeSignup(
             Long userId,
-            CustomerSignupRequest request
+            UserSignupRequest request
     );
 
     void completeArtistSignup(

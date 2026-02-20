@@ -1,7 +1,7 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
-import app.dearobjet.backend.domain.user.dto.CustomerSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -18,12 +18,12 @@ public class UserController {
     private final UserService userService;
 
     // CUSTOMER 가입 완료
-    @PostMapping("/complete/customer")
+    @PostMapping("/complete")
     public ResponseEntity<ApiResponse<Void>> completeCustomerSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody CustomerSignupRequest request
+            @RequestBody UserSignupRequest request
     ) {
-        userService.completeCustomerSignup(
+        userService.completeSignup(
                 userDetails.getUserId(),
                 request
         );
