@@ -5,6 +5,7 @@ import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,7 +22,7 @@ public class UserController {
     @PostMapping("/complete")
     public ResponseEntity<ApiResponse<Void>> completeCustomerSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody UserSignupRequest request
+            @Valid @RequestBody UserSignupRequest request
     ) {
         userService.completeSignup(
                 userDetails.getUserId(),
@@ -35,7 +36,7 @@ public class UserController {
     @PostMapping("/complete/artist")
     public ResponseEntity<ApiResponse<Void>> completeArtistSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody BusinessSignupRequest request
+            @Valid @RequestBody BusinessSignupRequest request
     ) {
         userService.completeArtistSignup(
                 userDetails.getUserId(),
@@ -49,9 +50,9 @@ public class UserController {
     @PostMapping("/complete/shop")
     public ResponseEntity<ApiResponse<Void>> completeShopSignup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody BusinessSignupRequest request
+            @Valid @RequestBody BusinessSignupRequest request
     ) {
-        userService.completeArtistSignup(
+        userService.completeShopSignup(
                 userDetails.getUserId(),
                 request
         );

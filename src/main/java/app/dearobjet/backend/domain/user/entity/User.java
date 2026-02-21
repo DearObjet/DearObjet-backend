@@ -3,6 +3,8 @@ package app.dearobjet.backend.domain.user.entity;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
+import app.dearobjet.backend.global.exception.BusinessException;
+import app.dearobjet.backend.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -62,7 +64,7 @@ public class User extends BaseTimeEntity {
             Boolean marketingAgreement
     ) {
         if (this.role != Role.TEMP) {
-            throw new IllegalStateException("User already registered");
+            throw new BusinessException(ErrorCode.USER_ALREADY_REGISTERED);
         }
 
         this.name = name;
