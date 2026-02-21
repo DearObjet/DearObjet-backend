@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
@@ -78,5 +80,14 @@ public class OrderController {
     ) {
         orderService.confirmPurchase(userDetails.getUserId(), orderId);
         return ApiResponse.of(null);
+    }
+
+    @GetMapping("/orders/stats")
+    public ApiResponse<OrderStatsResponse> getOrderStats(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to
+    ) {
+        return ApiResponse.of(orderService.getOrderStats(userDetails.getUserId(), from, to));
     }
 }
