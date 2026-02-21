@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -129,6 +131,44 @@ public class OrderService {
 
         validateOwner(order, userId);
         order.updateStatus(OrderStatus.COMPLETED);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderStatsResponse getOrderStats(Long userId, LocalDate from, LocalDate to) {
+
+        LocalDateTime fromDt = from.atStartOfDay();
+        LocalDateTime toDt = LocalDateTime.of(to, LocalTime.of(23, 59, 59));
+
+        // 1) 일별 매출
+        List<Object[]> salesRows = orderRepository.findSalesDaily(userId, fromDt, toDt);
+        List<OrderStatsResponse.SalesPoint> sales = new ArrayList<>();
+        for (Object[] row : salesRows) {
+            String date = String.valueOf(row[0]);
+            long cnt = ((Number) row[1]).longValue();
+            long amt = ((Number) row[2]).longValue();
+            sales.add(new OrderStatsResponse.SalesPoint(date, cnt, amt));
+        }
+
+        // 2) 인기 상품 Top 10
+        List<Object[]> popularRows = orderRepository.findPopularItemsTop10(userId, fromDt, toDt);
+        List<OrderStatsResponse.PopularItemPoint> popularItems = new ArrayList<>();
+        for (Object[] row : popularRows) {
+            Long itemId = ((Number) row[0]).longValue();
+            long qty = ((Number) row[1]).longValue();
+            long salesAmt = ((Number) row[2]).longValue();
+            popularItems.add(new OrderStatsResponse.PopularItemPoint(itemId, qty, salesAmt));
+        }
+
+        // 3) 시간대별 주문수
+        List<Object[]> hourRows = orderRepository.findOrdersByHour(userId, fromDt, toDt);
+        List<OrderStatsResponse.OrdersByHourPoint> ordersByHour = new ArrayList<>();
+        for (Object[] row : hourRows) {
+            int hour = ((Number) row[0]).intValue();
+            long cnt = ((Number) row[1]).longValue();
+            ordersByHour.add(new OrderStatsResponse.OrdersByHourPoint(hour, cnt));
+        }
+
+        return new OrderStatsResponse(sales, popularItems, ordersByHour);
     }
 
     private void validateOwner(Order order, Long userId) {
