@@ -54,10 +54,6 @@ public class UserServiceImpl implements UserService {
 
         User user = getUser(userId);
 
-        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new DuplicateEntityException(ErrorCode.PHONE_ALREADY_EXISTS);
-        }
-
         user.completeRegistration(
                 request.getName(),
                 request.getPhoneNumber(),
@@ -71,10 +67,6 @@ public class UserServiceImpl implements UserService {
     public void completeArtistSignup(Long userId, BusinessSignupRequest request) {
 
         User user = getUser(userId);
-
-        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new DuplicateEntityException(ErrorCode.PHONE_ALREADY_EXISTS);
-        }
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -104,10 +96,6 @@ public class UserServiceImpl implements UserService {
     public void completeShopSignup(Long userId, BusinessSignupRequest request) {
 
         User user = getUser(userId);
-
-        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new DuplicateEntityException(ErrorCode.PHONE_ALREADY_EXISTS);
-        }
 
         user.completeRegistration(
                 request.getOwnerName(),
