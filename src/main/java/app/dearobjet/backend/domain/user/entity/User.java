@@ -3,6 +3,8 @@ package app.dearobjet.backend.domain.user.entity;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
+import app.dearobjet.backend.global.exception.BusinessException;
+import app.dearobjet.backend.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +27,7 @@ public class User extends BaseTimeEntity {
 
     private String name;
 
-    @Column(unique = true)
+    @Column(name= "phone_number", unique = true)
     private String phoneNumber;
 
     @Column(name = "profile_image")
@@ -48,18 +50,8 @@ public class User extends BaseTimeEntity {
     @Column(name = "user_status", nullable = false)
     private UserStatus userStatus;
 
-    // 카카오 단일
-//    @Column(name = "login_type")
-//    private String loginType;  // EMAIL, KAKAO, NAVER, GOOGLE
-
     @Column(name = "social_id")
     private String socialId;
-
-    // 비즈니스 메서드
-    public void updateProfile(String name, String profileUrl) {
-        this.name = name;
-        this.profileUrl = profileUrl;
-    }
 
     public void deactivate() {
         this.userStatus = UserStatus.INACTIVE;
@@ -67,21 +59,20 @@ public class User extends BaseTimeEntity {
 
     public void completeRegistration(
             String name,
-            String email,
             String phoneNumber,
             Boolean smsAgreement,
-            Boolean marketingAgreement,
-            Role role
+            Boolean marketingAgreement
     ) {
         if (this.role != Role.TEMP) {
-            throw new IllegalStateException("User already registered");
+            throw new BusinessException(ErrorCode.USER_ALREADY_REGISTERED);
         }
 
         this.name = name;
-        this.email = email;
         this.phoneNumber = phoneNumber;
         this.smsAgreement = smsAgreement;
         this.marketingAgreement = marketingAgreement;
+    }
+    public void changeRole(Role role) {
         this.role = role;
     }
 
