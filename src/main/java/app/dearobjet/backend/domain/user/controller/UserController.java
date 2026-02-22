@@ -10,9 +10,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -39,32 +42,36 @@ public class UserController {
     }
 
     // ARTIST 가입 완료
-    @PostMapping("/complete/artist")
+    @PostMapping(value = "/complete/artist", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "작가 사용자 가입")
     public ResponseEntity<ApiResponse<Void>> completeArtistSignup(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody BusinessSignupRequest request
+            @Valid @RequestPart("request") BusinessSignupRequest request,
+            @RequestPart("businessLicenseFile") MultipartFile businessLicenseFile
     ) {
         userService.completeArtistSignup(
                 userDetails.getUserId(),
-                request
+                request,
+                businessLicenseFile
         );
 
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 
     // SHOP 가입 완료
-    @PostMapping("/complete/shop")
+    @PostMapping(value = "/complete/shop", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "상점 사용자 가입")
     public ResponseEntity<ApiResponse<Void>> completeShopSignup(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody BusinessSignupRequest request
+            @Valid @RequestPart("request") BusinessSignupRequest request,
+            @RequestPart("businessLicenseFile") MultipartFile businessLicenseFile
     ) {
         userService.completeShopSignup(
                 userDetails.getUserId(),
-                request
+                request,
+                businessLicenseFile
         );
 
         return ResponseEntity.ok(ApiResponse.of(null));

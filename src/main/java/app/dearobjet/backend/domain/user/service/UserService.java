@@ -3,6 +3,7 @@ package app.dearobjet.backend.domain.user.service;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
 
@@ -17,12 +18,14 @@ public interface UserService {
 
     void completeArtistSignup(
             Long userId,
-            BusinessSignupRequest request
+            BusinessSignupRequest request,
+            MultipartFile businessLicenseFile
     );
 
     void completeShopSignup(
             Long userId,
-            BusinessSignupRequest request
+            BusinessSignupRequest request,
+            MultipartFile businessLicenseFile
     );
 
     // 회원 비활성화
