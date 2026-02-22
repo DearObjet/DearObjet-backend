@@ -36,8 +36,9 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
 
         String socialId = oAuth2User.getAttribute("id").toString();
+        String email = oAuth2User.getAttribute("account_email");
 
-        User user = userService.getOrCreateKakaoUser(socialId);
+        User user = userService.getOrCreateKakaoUser(socialId, email);
 
         // refresh token 발급
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
