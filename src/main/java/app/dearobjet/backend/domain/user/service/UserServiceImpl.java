@@ -33,14 +33,15 @@ public class UserServiceImpl implements UserService {
      * 카카오 OAuth 로그인 사용자 조회 or 생성
      */
     @Override
-    public User getOrCreateKakaoUser(String socialId) {
+    public User getOrCreateKakaoUser(String socialId, String email) {
         return userRepository.findBySocialId(socialId)
-                .orElseGet(() -> createTempUser(socialId));
+                .orElseGet(() -> createTempUser(socialId, email));
     }
 
-    private User createTempUser(String socialId) {
+    private User createTempUser(String socialId, String email) {
         User user = User.builder()
                 .socialId(socialId)
+                .email(email)
                 .role(Role.TEMP)
                 .userStatus(UserStatus.ACTIVE)
                 .build();

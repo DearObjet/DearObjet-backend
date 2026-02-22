@@ -7,7 +7,7 @@ import app.dearobjet.backend.domain.user.entity.User;
 public interface UserService {
 
     // 카카오 OAuth 사용자 조회 또는 신규 생성
-    User getOrCreateKakaoUser(String socialId);
+    User getOrCreateKakaoUser(String socialId, String email);
 
     // CUSTOMER 가입
     void completeSignup(

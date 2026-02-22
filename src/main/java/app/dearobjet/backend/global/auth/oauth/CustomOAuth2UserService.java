@@ -1,5 +1,6 @@
 package app.dearobjet.backend.global.auth.oauth;
 
+import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -22,15 +23,35 @@ public class CustomOAuth2UserService
         DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
         OAuth2User oAuth2User = delegate.loadUser(userRequest);
 
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-
-        // 카카오 고유 ID
-        String id = attributes.get("id").toString();
+        Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());
+        String email = extractKakaoEmail(attributes);
+        if (email != null && !email.isBlank()) {
+            attributes.put("account_email", email);
+        }
 
         return new DefaultOAuth2User(
                 oAuth2User.getAuthorities(),
                 attributes,
                 "id" // user-name-attribute
         );
+    }
+
+    private String extractKakaoEmail(Map<String, Object> attributes) {
+        Object kakaoAccount = attributes.get("kakao_account");
+        if (!(kakaoAccount instanceof Map<?, ?> kakaoAccountMap)) {
+            return null;
+        }
+
+        Object emailValue = kakaoAccountMap.get("email");
+        if (emailValue instanceof String email) {
+            return email;
+        }
+
+        Object accountEmailValue = kakaoAccountMap.get("account_email");
+        if (accountEmailValue instanceof String accountEmail) {
+            return accountEmail;
+        }
+
+        return null;
     }
 }
