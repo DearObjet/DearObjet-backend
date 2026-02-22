@@ -10,13 +10,14 @@ import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
-import app.dearobjet.backend.global.exception.DuplicateEntityException;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.s3.service.S3FileUploadService;
 import app.dearobjet.backend.global.sms.service.SmsAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
     private final ShopRepository shopRepository;
+    private final S3FileUploadService s3FileUploadService;
 
     private final SmsAuthService smsAuthService;
 
@@ -65,9 +67,14 @@ public class UserServiceImpl implements UserService {
         user.changeRole(Role.USER);
     }
 
-    public void completeArtistSignup(Long userId, BusinessSignupRequest request) {
+    public void completeArtistSignup(
+            Long userId,
+            BusinessSignupRequest request,
+            MultipartFile businessLicenseFile
+    ) {
 
         User user = getUser(userId);
+        String businessLicenseUrl = s3FileUploadService.uploadBusinessLicense(businessLicenseFile, userId);
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -84,7 +91,7 @@ public class UserServiceImpl implements UserService {
                 .businessName(request.getBusinessName())
                 .ownerName(request.getOwnerName())
                 .businessAddress(request.getBusinessAddress())
-                .businessLicenseUrl(request.getBusinessLicenseUrl())
+                .businessLicenseUrl(businessLicenseUrl)
                 .businessType(request.getBusinessType())
                 .businessCategory(request.getBusinessCategory())
                 .specialty(request.getSpecialty())
@@ -94,9 +101,14 @@ public class UserServiceImpl implements UserService {
         artistRepository.save(artist);
     }
 
-    public void completeShopSignup(Long userId, BusinessSignupRequest request) {
+    public void completeShopSignup(
+            Long userId,
+            BusinessSignupRequest request,
+            MultipartFile businessLicenseFile
+    ) {
 
         User user = getUser(userId);
+        String businessLicenseUrl = s3FileUploadService.uploadBusinessLicense(businessLicenseFile, userId);
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -113,7 +125,7 @@ public class UserServiceImpl implements UserService {
                 .businessName(request.getBusinessName())
                 .ownerName(request.getOwnerName())
                 .businessAddress(request.getBusinessAddress())
-                .businessLicenseUrl(request.getBusinessLicenseUrl())
+                .businessLicenseUrl(businessLicenseUrl)
                 .businessType(request.getBusinessType())
                 .businessCategory(request.getBusinessCategory())
                 .specialty(request.getSpecialty())

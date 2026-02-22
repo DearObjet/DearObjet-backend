@@ -58,6 +58,11 @@ jwt:
 app:
   frontend:
     base-url: ${FRONTEND_BASE_URL}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION}
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 nts:
   api:
@@ -67,3 +72,11 @@ solapi:
   api-key: ${SOLAPI_API_KEY}
   api-secret: ${SOLAPI_API_SECRET}
   from-number: ${SOLAPI_FROM_NUMBER}
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID}
+      secret-key: ${AWS_SECRET_ACCESS_KEY}

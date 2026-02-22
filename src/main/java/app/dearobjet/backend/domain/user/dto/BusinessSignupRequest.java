@@ -55,9 +55,6 @@ public class BusinessSignupRequest {
     @NotBlank(message = "사업장 주소는 필수입니다.")
     private String businessAddress;
 
-    @Schema(description = "사업자등록증 URL", example = "https://cdn.example.com/license.png")
-    private String businessLicenseUrl;
-
     @Schema(description = "업태", example = "SERVICE")
     @NotNull(message = "업태는 필수입니다.")
     private BusinessType businessType;
