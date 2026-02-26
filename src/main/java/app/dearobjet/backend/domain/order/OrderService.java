@@ -1,6 +1,9 @@
 package app.dearobjet.backend.domain.order;
 
 import app.dearobjet.backend.domain.order.dto.*;
+import app.dearobjet.backend.domain.order.dto.projection.OrdersByHourRow;
+import app.dearobjet.backend.domain.order.dto.projection.PopularItemRow;
+import app.dearobjet.backend.domain.order.dto.projection.SalesDailyRow;
 import app.dearobjet.backend.domain.order.entity.Order;
 import app.dearobjet.backend.domain.order.entity.OrderItem;
 import app.dearobjet.backend.domain.order.entity.OrderStatus;
@@ -24,7 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository; // 추가
+    private final UserRepository userRepository;
 
     @Transactional
     public CreateOrderResponse createOrder(Long userId, CreateOrderRequest req) {
@@ -140,31 +143,31 @@ public class OrderService {
         LocalDateTime toDt = LocalDateTime.of(to, LocalTime.of(23, 59, 59));
 
         // 1) 일별 매출
-        List<Object[]> salesRows = orderRepository.findSalesDaily(userId, fromDt, toDt);
+        List<SalesDailyRow> salesRows = orderRepository.findSalesDaily(userId, fromDt, toDt);
         List<OrderStatsResponse.SalesPoint> sales = new ArrayList<>();
-        for (Object[] row : salesRows) {
-            String date = String.valueOf(row[0]);
-            long cnt = ((Number) row[1]).longValue();
-            long amt = ((Number) row[2]).longValue();
+        for (SalesDailyRow row : salesRows) {
+            String date = row.getD();
+            long cnt = (row.getCnt() == null) ? 0L : row.getCnt();
+            long amt = (row.getAmt() == null) ? 0L : row.getAmt();
             sales.add(new OrderStatsResponse.SalesPoint(date, cnt, amt));
         }
 
         // 2) 인기 상품 Top 10
-        List<Object[]> popularRows = orderRepository.findPopularItemsTop10(userId, fromDt, toDt);
+        List<PopularItemRow> popularRows = orderRepository.findPopularItemsTop10(userId, fromDt, toDt);
         List<OrderStatsResponse.PopularItemPoint> popularItems = new ArrayList<>();
-        for (Object[] row : popularRows) {
-            Long itemId = ((Number) row[0]).longValue();
-            long qty = ((Number) row[1]).longValue();
-            long salesAmt = ((Number) row[2]).longValue();
+        for (PopularItemRow row : popularRows) {
+            Long itemId = row.getItemId();
+            long qty = (row.getQty() == null) ? 0L : row.getQty();
+            long salesAmt = (row.getSales() == null) ? 0L : row.getSales();
             popularItems.add(new OrderStatsResponse.PopularItemPoint(itemId, qty, salesAmt));
         }
 
         // 3) 시간대별 주문수
-        List<Object[]> hourRows = orderRepository.findOrdersByHour(userId, fromDt, toDt);
+        List<OrdersByHourRow> hourRows = orderRepository.findOrdersByHour(userId, fromDt, toDt);
         List<OrderStatsResponse.OrdersByHourPoint> ordersByHour = new ArrayList<>();
-        for (Object[] row : hourRows) {
-            int hour = ((Number) row[0]).intValue();
-            long cnt = ((Number) row[1]).longValue();
+        for (OrdersByHourRow row : hourRows) {
+            int hour = (row.getH() == null) ? 0 : row.getH();
+            long cnt = (row.getCnt() == null) ? 0L : row.getCnt();
             ordersByHour.add(new OrderStatsResponse.OrdersByHourPoint(hour, cnt));
         }
 

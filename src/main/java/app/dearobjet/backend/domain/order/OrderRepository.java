@@ -1,5 +1,8 @@
 package app.dearobjet.backend.domain.order;
 
+import app.dearobjet.backend.domain.order.dto.projection.OrdersByHourRow;
+import app.dearobjet.backend.domain.order.dto.projection.PopularItemRow;
+import app.dearobjet.backend.domain.order.dto.projection.SalesDailyRow;
 import app.dearobjet.backend.domain.order.entity.Order;
 import app.dearobjet.backend.domain.order.entity.OrderStatus;
 import app.dearobjet.backend.domain.user.entity.User;
@@ -29,7 +32,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     GROUP BY DATE(o.paid_at)
     ORDER BY d ASC
     """, nativeQuery = true)
-    List<Object[]> findSalesDaily(
+    List<SalesDailyRow> findSalesDaily(
             @Param("userId") Long userId,
             @Param("fromDt") LocalDateTime fromDt,
             @Param("toDt") LocalDateTime toDt
@@ -50,7 +53,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     ORDER BY sales DESC
     LIMIT 10
     """, nativeQuery = true)
-    List<Object[]> findPopularItemsTop10(
+    List<PopularItemRow> findPopularItemsTop10(
             @Param("userId") Long userId,
             @Param("fromDt") LocalDateTime fromDt,
             @Param("toDt") LocalDateTime toDt
@@ -68,7 +71,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     GROUP BY CAST(EXTRACT(HOUR FROM o.paid_at) AS INT)
     ORDER BY h ASC
     """, nativeQuery = true)
-    List<Object[]> findOrdersByHour(
+    List<OrdersByHourRow> findOrdersByHour(
             @Param("userId") Long userId,
             @Param("fromDt") LocalDateTime fromDt,
             @Param("toDt") LocalDateTime toDt
