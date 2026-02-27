@@ -25,6 +25,23 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     Page<ChatMessage> findByRoomIdOrderByCreatedAtDesc(String roomId, Pageable pageable);
 
     /**
+     * 채팅방 메시지 커서 조회용 (ID 최신순)
+     *
+     * createdAt 대신 PK(id) 기반으로 커서 페이징을 하기 위해 사용
+     */
+    Page<ChatMessage> findByRoomIdOrderByIdDesc(String roomId, Pageable pageable);
+
+    /**
+     * afterMessageId 이후의 메시지 조회 (누락 복구)
+     */
+    Page<ChatMessage> findByRoomIdAndIdGreaterThanOrderByIdAsc(String roomId, Long afterMessageId, Pageable pageable);
+
+    /**
+     * beforeMessageId 이전의 메시지 조회 (과거 더보기)
+     */
+    Page<ChatMessage> findByRoomIdAndIdLessThanOrderByIdDesc(String roomId, Long beforeMessageId, Pageable pageable);
+
+    /**
      * 특정 시점 이후 메시지 조회
      * 읽지 않은 메시지 목록 조회에 사용
      *

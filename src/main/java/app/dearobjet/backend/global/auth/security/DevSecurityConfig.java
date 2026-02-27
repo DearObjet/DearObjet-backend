@@ -16,6 +16,9 @@ public class DevSecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .defaultSuccessUrl("/", true)
                 );
 
         return http.build();

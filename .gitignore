@@ -38,3 +38,7 @@ out/
 
 .env
 src/main/resources/logback.xml
+
+# AI tools
+.claude/
+.agents/

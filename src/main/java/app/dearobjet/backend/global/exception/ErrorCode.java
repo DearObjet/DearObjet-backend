@@ -29,6 +29,7 @@ public enum ErrorCode {
     CANNOT_CHAT_WITH_SELF(HttpStatus.BAD_REQUEST, "CH003", "자기 자신과는 채팅할 수 없습니다"),
     INVALID_CHAT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CH004", "유효하지 않은 참여자입니다"),
     GROUP_CHAT_MIN_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CH005", "그룹 채팅은 최소 3명 이상이어야 합니다"),
+    CHAT_MESSAGE_PUBLISH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "CH006", "메시지 발행에 실패했습니다"),
 
     // Auth (A0XX)
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다"),
