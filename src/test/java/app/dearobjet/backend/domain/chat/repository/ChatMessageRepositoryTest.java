@@ -173,4 +173,67 @@ class ChatMessageRepositoryTest extends RepositoryTestBase {
             assertThat(count).isEqualTo(0);
         }
     }
+
+    @Nested
+    @DisplayName("커서 기반 조회 (id)")
+    class CursorBasedQueryTest {
+
+        @Test
+        @DisplayName("findByRoomIdOrderByIdDesc - 최신 메시지부터 조회")
+        void findByRoomIdOrderByIdDesc_success() {
+            // given
+            ChatRoom room = createChatRoom(user1, user2);
+            createMessage(room, user1, "m1");
+            createMessage(room, user2, "m2");
+            createMessage(room, user1, "m3");
+
+            // when
+            Page<ChatMessage> page = chatMessageRepository
+                    .findByRoomIdOrderByIdDesc(room.getRoomId(), PageRequest.of(0, 10));
+
+            // then
+            assertThat(page.getContent()).hasSize(3);
+            assertThat(page.getContent().get(0).getContent()).isEqualTo("m3");
+            assertThat(page.getContent().get(1).getContent()).isEqualTo("m2");
+            assertThat(page.getContent().get(2).getContent()).isEqualTo("m1");
+        }
+
+        @Test
+        @DisplayName("findByRoomIdAndIdGreaterThanOrderByIdAsc - after id 이후 메시지 조회")
+        void findByRoomIdAndIdGreaterThanOrderByIdAsc_success() {
+            // given
+            ChatRoom room = createChatRoom(user1, user2);
+            ChatMessage m1 = createMessage(room, user1, "m1");
+            ChatMessage m2 = createMessage(room, user2, "m2");
+            ChatMessage m3 = createMessage(room, user1, "m3");
+
+            // when
+            Page<ChatMessage> page = chatMessageRepository
+                    .findByRoomIdAndIdGreaterThanOrderByIdAsc(room.getRoomId(), m1.getId(), PageRequest.of(0, 10));
+
+            // then
+            assertThat(page.getContent()).hasSize(2);
+            assertThat(page.getContent().get(0).getId()).isEqualTo(m2.getId());
+            assertThat(page.getContent().get(1).getId()).isEqualTo(m3.getId());
+        }
+
+        @Test
+        @DisplayName("findByRoomIdAndIdLessThanOrderByIdDesc - before id 이전 메시지 조회")
+        void findByRoomIdAndIdLessThanOrderByIdDesc_success() {
+            // given
+            ChatRoom room = createChatRoom(user1, user2);
+            ChatMessage m1 = createMessage(room, user1, "m1");
+            ChatMessage m2 = createMessage(room, user2, "m2");
+            ChatMessage m3 = createMessage(room, user1, "m3");
+
+            // when
+            Page<ChatMessage> page = chatMessageRepository
+                    .findByRoomIdAndIdLessThanOrderByIdDesc(room.getRoomId(), m3.getId(), PageRequest.of(0, 10));
+
+            // then
+            assertThat(page.getContent()).hasSize(2);
+            assertThat(page.getContent().get(0).getId()).isEqualTo(m2.getId());
+            assertThat(page.getContent().get(1).getId()).isEqualTo(m1.getId());
+        }
+    }
 }
