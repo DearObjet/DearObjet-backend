@@ -3,6 +3,7 @@ package app.dearobjet.backend.global.exception;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.api.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,7 +23,11 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     protected ResponseEntity<ApiResponse<ErrorResponse>> handleBusinessException(BusinessException e) {
-        log.warn("BusinessException: {}", e.getMessage());
+        if (e.getCause() != null) {
+            log.warn("BusinessException: {}", e.getMessage(), e);
+        } else {
+            log.warn("BusinessException: {}", e.getMessage());
+        }
         ErrorCode errorCode = e.getErrorCode();
         ErrorResponse response = ErrorResponse.of(errorCode, e.getMessage());
         return ResponseEntity
@@ -92,5 +97,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.of(response));
+    }
+
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    protected ResponseEntity<ApiResponse<ErrorResponse>> handleDataIntegrityViolation(
+            DataIntegrityViolationException e) {
+        String msg = String.valueOf(e.getMostSpecificCause().getMessage());
+
+        if (msg.contains("phone_number") || msg.contains("uk_users_phone_number")) {
+            ErrorResponse response = ErrorResponse.of(
+                    ErrorCode.PHONE_ALREADY_EXISTS,
+                    ErrorCode.PHONE_ALREADY_EXISTS.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.of(response));
+        }
+
+        ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT, "데이터 제약 조건 위반");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.of(response));
     }
 }

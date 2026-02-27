@@ -3,7 +3,7 @@ spring:
     name: backend
 
   profiles:
-    active: dev # 인증인가가 필요하다면 prod로 변경
+    active: prod # 인증인가가 필요하다면 prod로 변경
 
   config:
     import: optional:file:.env[.properties]
@@ -31,6 +31,8 @@ spring:
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
             client-authentication-method: client_secret_post
+            scope:
+              - account_email
         provider:
           kakao:
             authorization-uri: https://kauth.kakao.com/oauth/authorize
@@ -56,6 +58,11 @@ jwt:
 app:
   frontend:
     base-url: ${FRONTEND_BASE_URL}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION}
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 nts:
   api:
@@ -65,3 +72,11 @@ solapi:
   api-key: ${SOLAPI_API_KEY}
   api-secret: ${SOLAPI_API_SECRET}
   from-number: ${SOLAPI_FROM_NUMBER}
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID}
+      secret-key: ${AWS_SECRET_ACCESS_KEY}
