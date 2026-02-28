@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 @Getter
 @Setter
-@Component
 @ConfigurationProperties(prefix = "toss")
 public class TossPaymentsProperties {
     private String secretKey;
