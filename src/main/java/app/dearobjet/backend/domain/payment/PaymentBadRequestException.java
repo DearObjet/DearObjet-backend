@@ -1,7 +1,11 @@
+// file: .../domain/payment/PaymentBadRequestException.java
 package app.dearobjet.backend.domain.payment;
 
-public class PaymentBadRequestException extends RuntimeException {
+import app.dearobjet.backend.global.exception.BusinessException;
+import app.dearobjet.backend.global.exception.ErrorCode;
+
+public class PaymentBadRequestException extends BusinessException {
     public PaymentBadRequestException(String msg) {
-        super(msg);
+        super(ErrorCode.INVALID_INPUT, msg);
     }
 }
