@@ -10,7 +10,7 @@ import java.util.List;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 
 @Configuration
-public class RestTemplateConfig {
+public class RestClientConfig {
 
     @Bean
     public RestTemplate restTemplate(ObjectMapper objectMapper) {

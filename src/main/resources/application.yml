@@ -80,3 +80,8 @@ cloud:
     credentials:
       access-key: ${AWS_ACCESS_KEY_ID}
       secret-key: ${AWS_SECRET_ACCESS_KEY}
+
+toss:
+  secretKey: ${TOSS_SECRET_KEY:}
+  clientKey: ${TOSS_CLIENT_KEY:}
+  apiBase: ${TOSS_API_BASE:https://api.tosspayments.com}
