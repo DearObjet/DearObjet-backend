@@ -1,9 +1,11 @@
 package app.dearobjet.backend.domain.payment.entity;
 
-import app.dearobjet.backend.domain.classes.ClassReservation;
 import app.dearobjet.backend.domain.order.entity.Order;
+import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "payments")
@@ -11,39 +13,49 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class Payment {
+public class Payment extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "payments_id")
-    private Long paymentsId;
-
-    @Column(name = "payment_status")
-    private String paymentStatus;
-
-    @Column(name = "payment_method")
-    private String paymentMethod;
-
-    @Column(name = "payment_amount")
-    private Double paymentAmount;
-
-    @Column(name = "pg_id")
-    private String pgId;
-
-    @Column(name = "approved_at")
-    private java.time.LocalDateTime approvedAt;
-
-    @Column(name = "created_at")
-    private java.time.LocalDateTime createdAt;
-
-    @Column(name = "last_modified_at")
-    private java.time.LocalDateTime lastModifiedAt;
+    private Long paymentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reservation_id")
-    private ClassReservation reservation;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "orders_id")
+    @JoinColumn(name = "orders_id", nullable = false)
     private Order order;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private PaymentProvider provider;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private PaymentStatus status;
+
+    @Column(nullable = false)
+    private Long amount;
+
+    @Column(length = 200)
+    private String paymentKey; // 토스 paymentKey
+
+    private OffsetDateTime approvedAt;
+    private OffsetDateTime canceledAt;
+
+    @Column(length = 100)
+    private String failReason;
+
+    public void markDone(String paymentKey) {
+        this.status = PaymentStatus.DONE;
+        this.paymentKey = paymentKey;
+        this.approvedAt = OffsetDateTime.now();
+    }
+
+    public void markCanceled() {
+        this.status = PaymentStatus.CANCELED;
+        this.canceledAt = OffsetDateTime.now();
+    }
+
+    public void markFailed(String reason) {
+        this.status = PaymentStatus.FAILED;
+        this.failReason = reason;
+    }
 }
