@@ -1,5 +1,7 @@
 package app.dearobjet.backend.global.sms.service;
 
+import app.dearobjet.backend.global.exception.BusinessException;
+import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.sms.policy.SmsPolicy;
 import app.dearobjet.backend.global.sms.util.VerificationCodeGenerator;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +17,7 @@ public class SmsAuthService {
     public void sendVerificationCode(String phone) {
 
         if (redisService.isCooldown(phone)) {
-            throw new IllegalStateException("잠시 후 다시 요청하세요");
+            throw new BusinessException(ErrorCode.SMS_COOLDOWN_ACTIVE);
         }
 
         String code = VerificationCodeGenerator.generate();
@@ -34,18 +36,18 @@ public class SmsAuthService {
         String savedCode = redisService.getCode(phone);
 
         if (savedCode == null) {
-            throw new IllegalStateException("인증번호가 만료되었거나 요청되지 않았습니다");
+            throw new BusinessException(ErrorCode.SMS_CODE_EXPIRED);
         }
 
         int attempt = redisService.increaseAttempt(phone);
 
         if (attempt > SmsPolicy.MAX_ATTEMPT) {
             redisService.deleteCode(phone);
-            throw new IllegalStateException("인증 시도 횟수를 초과했습니다");
+            throw new BusinessException(ErrorCode.SMS_ATTEMPT_EXCEEDED);
         }
 
         if (!savedCode.equals(inputCode)) {
-            throw new IllegalArgumentException("인증번호가 일치하지 않습니다");
+            throw new BusinessException(ErrorCode.SMS_CODE_MISMATCH);
         }
 
         redisService.markVerified(phone);
@@ -58,7 +60,7 @@ public class SmsAuthService {
      */
     public void assertVerified(String phone) {
         if (!redisService.isVerified(phone)) {
-            throw new IllegalStateException("휴대폰 인증이 필요합니다");
+            throw new BusinessException(ErrorCode.SMS_VERIFICATION_REQUIRED);
         }
     }
 

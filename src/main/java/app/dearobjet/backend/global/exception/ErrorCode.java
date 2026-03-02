@@ -38,7 +38,20 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A004", "인증이 필요합니다"),
 
     // Notice (N0XX)
-    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "공지사항을 찾을 수 없습니다");
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "공지사항을 찾을 수 없습니다"),
+
+    // SMS (S0XX)
+    SMS_COOLDOWN_ACTIVE(HttpStatus.BAD_REQUEST, "S001", "잠시 후 다시 요청하세요"),
+    SMS_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "S002", "인증번호가 만료되었거나 요청되지 않았습니다"),
+    SMS_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "S003", "인증번호가 일치하지 않습니다"),
+    SMS_ATTEMPT_EXCEEDED(HttpStatus.BAD_REQUEST, "S004", "인증 시도 횟수를 초과했습니다"),
+    SMS_VERIFICATION_REQUIRED(HttpStatus.BAD_REQUEST, "S005", "휴대폰 인증이 필요합니다"),
+    SMS_SEND_FAILED(HttpStatus.BAD_GATEWAY, "S006", "SMS 발송에 실패했습니다"),
+
+    // Storage (ST0XX)
+    FILE_REQUIRED(HttpStatus.BAD_REQUEST, "ST001", "업로드할 파일이 필요합니다"),
+    INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "ST002", "허용되지 않은 파일 형식입니다"),
+    S3_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "ST003", "S3 업로드에 실패했습니다");
 
     private final HttpStatus status;
     private final String code;

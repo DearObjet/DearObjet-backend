@@ -2,10 +2,11 @@ package app.dearobjet.backend.global.sms.service;
 
 import com.solapi.sdk.message.exception.SolapiEmptyResponseException;
 import com.solapi.sdk.message.exception.SolapiMessageNotReceivedException;
-
 import com.solapi.sdk.message.exception.SolapiUnknownException;
 import com.solapi.sdk.message.model.Message;
 import com.solapi.sdk.message.service.DefaultMessageService;
+import app.dearobjet.backend.global.exception.BusinessException;
+import app.dearobjet.backend.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -32,13 +33,13 @@ public class SolapiSmsService {
             messageService.send(message);
 
         } catch (SolapiMessageNotReceivedException e) {
-            throw new IllegalStateException("SMS 발송 실패 (수신 거부/번호 오류)", e);
+            throw new BusinessException(ErrorCode.SMS_SEND_FAILED, "SMS 발송 실패 (수신 거부/번호 오류)");
 
         } catch (SolapiEmptyResponseException e) {
-            throw new IllegalStateException("SMS 발송 실패 (Solapi 응답 없음)", e);
+            throw new BusinessException(ErrorCode.SMS_SEND_FAILED, "SMS 발송 실패 (Solapi 응답 없음)");
 
         } catch (SolapiUnknownException e) {
-            throw new IllegalStateException("SMS 발송 실패 (알 수 없는 오류)", e);
+            throw new BusinessException(ErrorCode.SMS_SEND_FAILED, "SMS 발송 실패 (알 수 없는 오류)");
         }
     }
 }
