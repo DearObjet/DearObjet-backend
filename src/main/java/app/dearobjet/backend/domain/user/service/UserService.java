@@ -1,7 +1,9 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateMyPageRequest;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UserMyPageResponse;
 import app.dearobjet.backend.domain.user.entity.User;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,5 +34,9 @@ public interface UserService {
     void deactivateUser(Long userId);
 
     void changePhone(Long userId, String newPhone);
+
+    UserMyPageResponse getMyPage(Long userId);
+
+    void updateMyPage(Long userId, UpdateMyPageRequest request);
 }
 

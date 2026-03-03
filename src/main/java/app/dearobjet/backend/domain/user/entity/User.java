@@ -79,4 +79,18 @@ public class User extends BaseTimeEntity {
     public void changePhone(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
+
+    public void updateMyPage(
+            String name,
+            String phoneNumber,
+            String profileImage,
+            Boolean smsAgreement,
+            Boolean marketingAgreement
+    ) {
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+        this.profileImage = profileImage;
+        this.smsAgreement = smsAgreement;
+        this.marketingAgreement = marketingAgreement;
+    }
 }

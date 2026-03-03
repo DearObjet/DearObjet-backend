@@ -3,6 +3,8 @@ package app.dearobjet.backend.domain.user.service;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateMyPageRequest;
+import app.dearobjet.backend.domain.user.dto.UserMyPageResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
@@ -157,6 +159,36 @@ public class UserServiceImpl implements UserService {
 
         // 2. 인증 1회성 소모
         smsAuthService.consumeVerified(newPhone);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserMyPageResponse getMyPage(Long userId) {
+        User user = getUser(userId);
+        return UserMyPageResponse.from(user);
+    }
+
+    @Override
+    public void updateMyPage(Long userId, UpdateMyPageRequest request) {
+        User user = getUser(userId);
+
+        // TODO: 실운영 SMS 인증 안정화 후 재활성화
+        // boolean isPhoneChanged = !Objects.equals(user.getPhoneNumber(), request.getPhoneNumber());
+        // if (isPhoneChanged) {
+        //     smsAuthService.assertVerified(request.getPhoneNumber());
+        // }
+
+        user.updateMyPage(
+                request.getName(),
+                request.getPhoneNumber(),
+                request.getProfileImage(),
+                request.getSmsAgreement(),
+                request.getMarketingAgreement()
+        );
+
+        // if (isPhoneChanged) {
+        //     smsAuthService.consumeVerified(request.getPhoneNumber());
+        // }
     }
 
     private User getUser(Long userId) {

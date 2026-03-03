@@ -1,10 +1,14 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateMyPageRequest;
+import app.dearobjet.backend.domain.user.dto.UserMyPageResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
+import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.exception.UnauthorizedException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,7 +38,7 @@ public class UserController {
             @Valid @RequestBody UserSignupRequest request
     ) {
         userService.completeSignup(
-                userDetails.getUserId(),
+                getAuthenticatedUserId(userDetails),
                 request
         );
 
@@ -51,7 +55,7 @@ public class UserController {
             @RequestPart("businessLicenseFile") MultipartFile businessLicenseFile
     ) {
         userService.completeArtistSignup(
-                userDetails.getUserId(),
+                getAuthenticatedUserId(userDetails),
                 request,
                 businessLicenseFile
         );
@@ -69,11 +73,38 @@ public class UserController {
             @RequestPart("businessLicenseFile") MultipartFile businessLicenseFile
     ) {
         userService.completeShopSignup(
-                userDetails.getUserId(),
+                getAuthenticatedUserId(userDetails),
                 request,
                 businessLicenseFile
         );
 
         return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
+    @GetMapping("/mypage")
+    @Operation(summary = "마이페이지 정보 조회")
+    public ResponseEntity<ApiResponse<UserMyPageResponse>> getMyPage(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(userService.getMyPage(getAuthenticatedUserId(userDetails))));
+    }
+
+    @PostMapping("/mypage")
+    @Operation(summary = "마이페이지 정보 수정")
+    public ResponseEntity<ApiResponse<Void>> updateMyPage(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateMyPageRequest request
+    ) {
+        userService.updateMyPage(getAuthenticatedUserId(userDetails), request);
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
+    private Long getAuthenticatedUserId(CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        }
+        return userDetails.getUserId();
     }
 }
