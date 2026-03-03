@@ -90,14 +90,15 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.of(userService.getMyPage(getAuthenticatedUserId(userDetails))));
     }
 
-    @PostMapping("/mypage")
+    @PostMapping(value = "/mypage", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "마이페이지 정보 수정")
     public ResponseEntity<ApiResponse<Void>> updateMyPage(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody UpdateMyPageRequest request
+            @Valid @RequestPart("request") UpdateMyPageRequest request,
+            @RequestPart(value = "profileImageFile", required = false) MultipartFile profileImageFile
     ) {
-        userService.updateMyPage(getAuthenticatedUserId(userDetails), request);
+        userService.updateMyPage(getAuthenticatedUserId(userDetails), request, profileImageFile);
         return ResponseEntity.ok(ApiResponse.of(null));
     }
 

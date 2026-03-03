@@ -24,6 +24,11 @@ public class S3FileUploadService {
             "image/webp",
             "application/pdf"
     );
+    private static final Set<String> ALLOWED_IMAGE_CONTENT_TYPES = Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+    );
 
     private final S3Client s3Client;
 
@@ -37,6 +42,34 @@ public class S3FileUploadService {
         validateFile(file);
 
         String key = buildKey(userId, file.getOriginalFilename());
+        String contentType = file.getContentType();
+
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
+            return buildPublicUrl(key);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 읽기에 실패했습니다.");
+        } catch (S3Exception e) {
+            String detailMessage = e.awsErrorDetails() == null
+                    ? e.getMessage()
+                    : e.awsErrorDetails().errorCode() + ": " + e.awsErrorDetails().errorMessage();
+            throw new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "S3 업로드 실패 - " + detailMessage
+            );
+        }
+    }
+
+    public String uploadProfileImage(MultipartFile file, Long userId) {
+        validateImageFile(file);
+
+        String key = buildProfileImageKey(userId, file.getOriginalFilename());
         String contentType = file.getContentType();
 
         try {
@@ -75,9 +108,28 @@ public class S3FileUploadService {
         }
     }
 
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "프로필 이미지 파일은 필수입니다.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_CONTENT_TYPES.contains(contentType)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT,
+                    "허용되지 않은 파일 형식입니다. (jpg, png, webp만 가능)"
+            );
+        }
+    }
+
     private String buildKey(Long userId, String originalFilename) {
         String extension = extractExtension(originalFilename);
         return "business-license/" + userId + "/" + UUID.randomUUID() + extension;
+    }
+
+    private String buildProfileImageKey(Long userId, String originalFilename) {
+        String extension = extractExtension(originalFilename);
+        return "profile-image/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
     private String extractExtension(String filename) {

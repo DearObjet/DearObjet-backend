@@ -169,8 +169,9 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void updateMyPage(Long userId, UpdateMyPageRequest request) {
+    public void updateMyPage(Long userId, UpdateMyPageRequest request, MultipartFile profileImageFile) {
         User user = getUser(userId);
+        String profileImageUrl = user.getProfileImage();
 
         // TODO: 실운영 SMS 인증 안정화 후 재활성화
         // boolean isPhoneChanged = !Objects.equals(user.getPhoneNumber(), request.getPhoneNumber());
@@ -178,10 +179,14 @@ public class UserServiceImpl implements UserService {
         //     smsAuthService.assertVerified(request.getPhoneNumber());
         // }
 
+        if (profileImageFile != null && !profileImageFile.isEmpty()) {
+            profileImageUrl = s3FileUploadService.uploadProfileImage(profileImageFile, userId);
+        }
+
         user.updateMyPage(
                 request.getName(),
                 request.getPhoneNumber(),
-                request.getProfileImage(),
+                profileImageUrl,
                 request.getSmsAgreement(),
                 request.getMarketingAgreement()
         );

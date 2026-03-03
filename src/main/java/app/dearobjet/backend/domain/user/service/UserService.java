@@ -37,6 +37,6 @@ public interface UserService {
 
     UserMyPageResponse getMyPage(Long userId);
 
-    void updateMyPage(Long userId, UpdateMyPageRequest request);
+    void updateMyPage(Long userId, UpdateMyPageRequest request, MultipartFile profileImageFile);
 }
 
