@@ -10,8 +10,18 @@ import app.dearobjet.backend.domain.payment.entity.*;
 import app.dearobjet.backend.domain.payment.toss.TossPaymentsClient;
 import app.dearobjet.backend.domain.payment.toss.TossPaymentsProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -131,5 +141,45 @@ public class PaymentService {
             payment.markDone(paymentKey);
             payment.getOrder().updateStatus(OrderStatus.PAID);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentListResponse getPayments(Long userId, LocalDate from, LocalDate to, int page, int size) {
+        LocalDateTime fromDt = from.atStartOfDay();
+        LocalDateTime toDt = LocalDateTime.of(to, LocalTime.of(23, 59, 59));
+
+        Pageable pageable = PageRequest.of(
+                Math.max(page - 1, 0),
+                size,
+                Sort.by(Sort.Direction.DESC, "paymentId")
+        );
+
+        Page<Payment> paymentPage = paymentRepository.findByOrder_User_IdAndCreatedAtBetween(
+                userId, fromDt, toDt, pageable
+        );
+
+        List<PaymentResponse> items = new ArrayList<>();
+        for (Payment payment : paymentPage.getContent()) {
+            items.add(toResponse(payment));
+        }
+
+        return new PaymentListResponse(items, page, paymentPage.getTotalPages());
+    }
+
+    private PaymentResponse toResponse(Payment payment) {
+        Order order = payment.getOrder();
+
+        return new PaymentResponse(
+                payment.getPaymentId(),
+                order.getOrdersId(),
+                order.getOrderNumber(),
+                payment.getProvider(),
+                payment.getStatus(),
+                payment.getAmount(),
+                payment.getPaymentKey(),
+                payment.getApprovedAt(),
+                payment.getCanceledAt(),
+                payment.getFailReason()
+        );
     }
 }

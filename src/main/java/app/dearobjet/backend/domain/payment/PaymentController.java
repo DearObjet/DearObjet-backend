@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
@@ -40,5 +42,18 @@ public class PaymentController {
     ) {
         paymentService.cancelPayment(userDetails.getUserId(), paymentId, req);
         return ApiResponse.of(null);
+    }
+
+    @GetMapping("/payments")
+    public ApiResponse<PaymentListResponse> getPayments(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.of(
+                paymentService.getPayments(userDetails.getUserId(), from, to, page, size)
+        );
     }
 }
