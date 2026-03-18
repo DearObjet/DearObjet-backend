@@ -10,7 +10,9 @@ import java.time.OffsetDateTime;
 public class NoticeResponse {
     private final Long noticeId;
     private final NoticeCategory category;
+    private final String badge;
     private final String title;
     private final String body;
     private final OffsetDateTime publishedAt;
+    private final boolean isNew;
 }

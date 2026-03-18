@@ -20,7 +20,10 @@ public class Notice {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private NoticeCategory category;   // NOTICE | NEWS | EVENT | FESTIVAL
+    private NoticeCategory category;   // NOTICE | NEWS | EVENT | FESTIVAL | GENERAL | GUIDE
+
+    @Column(length = 30)
+    private String badge;
 
     private String title;
 
