@@ -5,6 +5,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +15,8 @@ import java.util.List;
 public class NoticeService {
 
     private final NoticeRepository noticeRepository;
+
+    private static final int NEW_DAYS = 7;
 
     public NoticeListResponse getNotices(NoticeCategory category, int page, int size) {
         Pageable pageable = PageRequest.of(
@@ -40,12 +43,16 @@ public class NoticeService {
     }
 
     private NoticeResponse toResponse(Notice notice) {
+        boolean isNew = notice.getPublishedAt() != null
+                && notice.getPublishedAt().isAfter(OffsetDateTime.now().minusDays(NEW_DAYS));
         return new NoticeResponse(
                 notice.getNotificationId(),
                 notice.getCategory(),
+                notice.getBadge(),
                 notice.getTitle(),
                 notice.getBody(),
-                notice.getPublishedAt()
+                notice.getPublishedAt(),
+                isNew
         );
     }
 }
