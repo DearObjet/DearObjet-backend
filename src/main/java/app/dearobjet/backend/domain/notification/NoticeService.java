@@ -18,14 +18,14 @@ public class NoticeService {
 
     private static final int NEW_DAYS = 7;
 
-    public NoticeListResponse getNotices(NoticeCategory category, int page, int size) {
+    public NoticeListResponse getNotices(NoticeTarget target, NoticeCategory category, int page, int size) {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0), size, Sort.by(Sort.Direction.DESC, "publishedAt")
         );
 
         Page<Notice> noticePage = (category == null)
-                ? noticeRepository.findAll(pageable)
-                : noticeRepository.findByCategory(category, pageable);
+                ? noticeRepository.findByTarget(target, pageable)
+                : noticeRepository.findByTargetAndCategory(target, category, pageable);
 
         List<NoticeResponse> noticeResponses = new ArrayList<>();
         for (Notice notice : noticePage.getContent()) {
@@ -47,6 +47,7 @@ public class NoticeService {
                 && notice.getPublishedAt().isAfter(OffsetDateTime.now().minusDays(NEW_DAYS));
         return new NoticeResponse(
                 notice.getNotificationId(),
+                notice.getTarget(),
                 notice.getCategory(),
                 notice.getBadge(),
                 notice.getTitle(),
