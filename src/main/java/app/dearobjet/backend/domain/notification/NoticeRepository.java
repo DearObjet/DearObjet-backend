@@ -6,5 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NoticeRepository extends JpaRepository<Notice,Long> {
-    Page<Notice> findByCategory(NoticeCategory noticeCategory, Pageable pageable);
+    Page<Notice> findByTarget(NoticeTarget target, Pageable pageable);
+
+    Page<Notice> findByTargetAndCategory(NoticeTarget target, NoticeCategory category, Pageable pageable);
 }
