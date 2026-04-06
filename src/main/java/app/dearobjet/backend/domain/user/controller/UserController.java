@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
@@ -24,6 +25,15 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController {
 
     private final UserService userService;
+
+    @GetMapping("/me")
+    @Operation(summary = "내 정보 조회")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getMyInfo(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(userService.getUserInfo(userDetails.getUserId())));
+    }
 
     // CUSTOMER 가입 완료
     @PostMapping("/complete")

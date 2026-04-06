@@ -3,6 +3,7 @@ package app.dearobjet.backend.domain.user.service;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
@@ -38,6 +39,12 @@ public class UserServiceImpl implements UserService {
     public User getOrCreateKakaoUser(String socialId, String email) {
         return userRepository.findBySocialId(socialId)
                 .orElseGet(() -> createTempUser(socialId, email));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserInfoResponse getUserInfo(Long userId) {
+        return UserInfoResponse.from(getUser(userId));
     }
 
     private User createTempUser(String socialId, String email) {
