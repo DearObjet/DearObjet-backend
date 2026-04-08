@@ -15,7 +15,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create # update로 수정해야함
+      ddl-auto: update # update로 수정해야함
     properties:
       hibernate:
         format_sql: true
