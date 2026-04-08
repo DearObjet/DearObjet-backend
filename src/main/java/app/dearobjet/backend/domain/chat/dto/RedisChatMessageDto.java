@@ -38,14 +38,15 @@ public class RedisChatMessageDto {
     private String content;
     private MessageType messageType;
     private LocalDateTime timestamp;
+    private Boolean typing;
 
     /**
      * 일반 메시지 생성
      */
     public static RedisChatMessageDto ofMessage(String roomId, Long messageId, Long senderId,
-                                              String senderName, String senderProfileImage,
-                                              String content,
-                                              MessageType messageType, LocalDateTime timestamp) {
+                                                String senderName, String senderProfileImage,
+                                                String content,
+                                                MessageType messageType, LocalDateTime timestamp) {
         return RedisChatMessageDto.builder()
                 .eventType(EventType.MESSAGE)
                 .roomId(roomId)
@@ -62,12 +63,13 @@ public class RedisChatMessageDto {
     /**
      * 타이핑 이벤트 생성
      */
-    public static RedisChatMessageDto ofTyping(String roomId, Long senderId, String senderName) {
+    public static RedisChatMessageDto ofTyping(String roomId, Long senderId, String senderName, boolean typing) {
         return RedisChatMessageDto.builder()
                 .eventType(EventType.TYPING)
                 .roomId(roomId)
                 .senderId(senderId)
                 .senderName(senderName)
+                .typing(typing)
                 .timestamp(LocalDateTime.now())
                 .build();
     }
