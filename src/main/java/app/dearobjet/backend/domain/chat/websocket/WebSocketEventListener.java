@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
+import app.dearobjet.backend.domain.chat.repository.ChatParticipantRepository;
 
 import java.security.Principal;
 
@@ -27,6 +28,7 @@ public class WebSocketEventListener {
 
     private final SessionRedisService sessionRedisService;
     private final PresenceRedisService presenceRedisService;
+    private final ChatParticipantRepository chatParticipantRepository;
 
     @Value("${spring.application.name:backend}")
     private String serverId;
@@ -65,6 +67,11 @@ public class WebSocketEventListener {
             // 오프라인 상태 설정
             presenceRedisService.setOffline(userId);
 
+            // 참여 중인 모든 채팅방에서 presence 제거
+            chatParticipantRepository.findMyParticipationsWithDetails(userId)
+                    .forEach(p ->
+                            presenceRedisService.leaveRoom(p.getChatRoom().getRoomId(), userId)
+                    );
             log.info("WebSocket disconnected - userId: {}, sessionId: {}", userId, sessionId);
         }
     }
@@ -82,7 +89,6 @@ public class WebSocketEventListener {
             // 채팅방 구독 시 해당 방에 입장 처리
             String roomId = extractRoomIdFromDestination(destination);
             if (roomId != null) {
-                presenceRedisService.joinRoom(roomId, userId);
                 sessionRedisService.setActiveRoom(userId, roomId);
                 log.debug("User {} subscribed to room {}", userId, roomId);
             }

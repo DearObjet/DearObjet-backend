@@ -78,6 +78,7 @@ public class ChatRoomResponse {
         private String nickname;
         private String profileImageUrl;
         private LocalDateTime joinedAt;
+        private LocalDateTime lastReadAt;
 
         public static ParticipantResponse from(ChatParticipant participant) {
             return ParticipantResponse.builder()
@@ -85,6 +86,7 @@ public class ChatRoomResponse {
                     .nickname(participant.getUser().getName())
                     .profileImageUrl(participant.getUser().getProfileImage())
                     .joinedAt(participant.getJoinedAt())
+                    .lastReadAt(participant.getLastReadAt())
                     .build();
         }
     }
