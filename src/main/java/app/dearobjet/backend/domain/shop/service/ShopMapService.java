@@ -30,6 +30,7 @@ public class ShopMapService {
     // 같은 주소를 반복 지오코딩하지 않도록 성공한 좌표만 메모리에 보관한다.
     private final Map<String, ShopCoordinate> coordinateCache = new ConcurrentHashMap<>();
 
+    @Transactional
     public ShopMapResponse getShopMarkers() {
         List<ShopMapItemResponse> markers = loadShopMarkers();
         log.info("Loaded shop markers count={}", markers.size());
@@ -63,6 +64,13 @@ public class ShopMapService {
             return Optional.empty();
         }
 
+        if (shop.getLatitude() != null && shop.getLongitude() != null) {
+            return Optional.of(toShopMapItemResponse(
+                    shop,
+                    new ShopCoordinate(shop.getLatitude(), shop.getLongitude())
+            ));
+        }
+
         log.info("Start geocoding shopId={}, address={}", shop.getShopId(), shop.getBusinessAddress());
 
         // 이미 좌표를 구한 주소면 외부 API를 다시 부르지 않는다.
@@ -82,6 +90,7 @@ public class ShopMapService {
         return coordinate.map(value -> {
             // 실패 결과는 캐시하지 않고, 성공한 좌표만 다음 요청에 재사용한다.
             coordinateCache.put(shop.getBusinessAddress(), value);
+            shop.updateCoordinates(value.latitude(), value.longitude());
             log.info(
                     "Geocoding success shopId={}, lat={}, lng={}",
                     shop.getShopId(),

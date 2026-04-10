@@ -35,6 +35,12 @@ public class Shop extends BaseTimeEntity {
     @Column(name = "business_adress")
     private String businessAddress;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @Column(name = "owner_name")
     private String ownerName;
 
@@ -46,6 +52,9 @@ public class Shop extends BaseTimeEntity {
 
     @Column(name = "shop_description")
     private String shopDescription;
+
+    @Column(name = "business_hours")
+    private String businessHours;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "business_type", nullable = false)
@@ -61,4 +70,9 @@ public class Shop extends BaseTimeEntity {
 
     @Column(name="review_data_agreement", nullable=false)
     private Boolean reviewDataAgreement = false;
+
+    public void updateCoordinates(Double latitude, Double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
 }

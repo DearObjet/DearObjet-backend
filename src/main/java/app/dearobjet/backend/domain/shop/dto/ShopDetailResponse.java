@@ -5,13 +5,15 @@ import app.dearobjet.backend.domain.shop.entity.Shop;
 public record ShopDetailResponse(
         String shopName,
         String phoneNumber,
-        String businessAddress
+        String businessAddress,
+        String businessHours
 ) {
     public static ShopDetailResponse from(Shop shop) {
         return new ShopDetailResponse(
                 shop.getShopName(),
                 shop.getUser() == null ? null : shop.getUser().getPhoneNumber(),
-                shop.getBusinessAddress()
+                shop.getBusinessAddress(),
+                shop.getBusinessHours()
         );
     }
 }
