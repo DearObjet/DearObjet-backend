@@ -53,9 +53,6 @@ public class Shop extends BaseTimeEntity {
     @Column(name = "shop_description")
     private String shopDescription;
 
-    @Column(name = "business_hours")
-    private String businessHours;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "business_type", nullable = false)
     private BusinessType businessType;

@@ -6,14 +6,14 @@ public record ShopDetailResponse(
         String shopName,
         String phoneNumber,
         String businessAddress,
-        String businessHours
+        ShopBusinessHoursResponse businessHours
 ) {
-    public static ShopDetailResponse from(Shop shop) {
+    public static ShopDetailResponse from(Shop shop, ShopBusinessHoursResponse businessHours) {
         return new ShopDetailResponse(
                 shop.getShopName(),
                 shop.getUser() == null ? null : shop.getUser().getPhoneNumber(),
                 shop.getBusinessAddress(),
-                shop.getBusinessHours()
+                businessHours
         );
     }
 }

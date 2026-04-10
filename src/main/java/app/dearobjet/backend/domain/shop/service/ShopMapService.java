@@ -23,6 +23,7 @@ public class ShopMapService {
 
     private final ShopRepository shopRepository;
     private final KakaoLocalClient kakaoLocalClient;
+    private final ShopService shopService;
 
     public ShopMapResponse getShopMarkers() {
         List<ShopMapItemResponse> markers = loadShopMarkers();
@@ -33,7 +34,7 @@ public class ShopMapService {
     public ShopDetailResponse getShopDetail(Long shopId) {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
-        return ShopDetailResponse.from(shop);
+        return ShopDetailResponse.from(shop, shopService.getBusinessHours(shopId));
     }
 
     @Transactional
