@@ -15,7 +15,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create # update로 수정해야함
+      ddl-auto: update # update로 수정해야함
     properties:
       hibernate:
         format_sql: true
@@ -44,6 +44,10 @@ spring:
     redis:
       host: localhost
       port: 6379
+
+kakao:
+  map:
+    rest-api-key: ${KAKAO_CLIENT_ID}
 
 logging:
   level:

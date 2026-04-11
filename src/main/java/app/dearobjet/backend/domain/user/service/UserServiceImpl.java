@@ -1,7 +1,9 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
 import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.shop.service.ShopCoordinate;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
@@ -28,6 +30,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
     private final ShopRepository shopRepository;
+    private final KakaoLocalClient kakaoLocalClient;
     private final S3FileUploadService s3FileUploadService;
 
     private final SmsAuthService smsAuthService;
@@ -126,12 +129,16 @@ public class UserServiceImpl implements UserService {
 
         user.changeRole(Role.SHOP);
 
+        ShopCoordinate coordinate = kakaoLocalClient.searchAddress(request.getBusinessAddress());
+
         Shop shop = Shop.builder()
                 .user(user)
                 .businessNumber(request.getBusinessNumber())
                 .businessName(request.getBusinessName())
                 .ownerName(request.getOwnerName())
                 .businessAddress(request.getBusinessAddress())
+                .latitude(coordinate == null ? null : coordinate.latitude())
+                .longitude(coordinate == null ? null : coordinate.longitude())
                 .businessLicenseUrl(businessLicenseUrl)
                 .businessType(request.getBusinessType())
                 .businessCategory(request.getBusinessCategory())
