@@ -77,6 +77,31 @@ public class ClassesService {
     }
 
     @Transactional(readOnly = true)
+    public ClassListResponse getClassesByShop(Long shopId, int page, int size) {
+        shopRepository.findById(shopId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
+
+        Pageable pageable = PageRequest.of(
+                Math.max(page - 1, 0),
+                size,
+                Sort.by(Sort.Direction.DESC, "classesId")
+        );
+
+        Page<Classes> classPage = classesRepository.findByShop_ShopId(shopId, pageable);
+        List<ClassListResponse.Item> items = new ArrayList<>();
+        for (Classes classes : classPage.getContent()) {
+            items.add(new ClassListResponse.Item(
+                    classes.getClassesId(),
+                    classes.getClassName(),
+                    getFirstImageUrl(classes),
+                    classes.getMaxCapacity()
+            ));
+        }
+
+        return new ClassListResponse(items, page, classPage.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
     public ClassResponse getMyClass(Long userId, Long classId) {
         Classes classes = classesRepository.findByClassesIdAndShop_User_Id(classId, userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
