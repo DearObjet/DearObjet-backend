@@ -84,15 +84,13 @@ public class ClassReservationService {
 
     @Transactional
     public CreateClassReservationResponse createReservation(Long userId, CreateClassReservationRequest request) {
-        Classes classes = classesRepository.findById(request.classId())
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // 프론트가 슬롯 조회에서 받은 sessionId를 그대로 예약에 사용한다.
         ClassSession session = classSessionRepository.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 가능한 슬롯을 찾을 수 없습니다."));
+        Classes classes = session.getClasses();
 
         validateReservationRequest(request, classes, session);
 

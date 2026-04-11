@@ -241,14 +241,12 @@ class ClassReservationServiceTest {
                 .sessionStatus("OPEN")
                 .build();
         CreateClassReservationRequest request = new CreateClassReservationRequest(
-                10L,
                 100L,
                 2,
                 "홍길동",
                 "창가 자리면 좋아요"
         );
 
-        given(classesRepository.findById(10L)).willReturn(Optional.of(classes));
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(classSessionRepository.findBySessionId(100L))
                 .willReturn(Optional.of(session));
@@ -295,14 +293,12 @@ class ClassReservationServiceTest {
                 .sessionStatus("OPEN")
                 .build();
         CreateClassReservationRequest request = new CreateClassReservationRequest(
-                10L,
                 100L,
                 2,
                 "홍길동",
                 null
         );
 
-        given(classesRepository.findById(10L)).willReturn(Optional.of(classes));
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(classSessionRepository.findBySessionId(100L))
                 .willReturn(Optional.of(session));
