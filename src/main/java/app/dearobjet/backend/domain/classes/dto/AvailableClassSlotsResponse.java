@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record AvailableClassSlotsResponse(
-        Long classId,
         LocalDate date,
         String openTime,
         String closeTime,
@@ -14,9 +13,9 @@ public record AvailableClassSlotsResponse(
 
     public record Slot(
             Long sessionId,
-            LocalDateTime reservationTime,
-            String label,
-            Integer remainingCapacity
+            String time,
+            Integer remainingCapacity,
+            boolean available
     ) {
     }
 }

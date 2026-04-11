@@ -5,11 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
+import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
+import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.shop.entity.ShopBusinessHour;
 import app.dearobjet.backend.domain.shop.repository.ShopBusinessHourRepository;
+import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
+import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
+import app.dearobjet.backend.global.exception.InvalidInputException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +41,9 @@ class ClassReservationServiceTest {
 
     @Mock
     private ShopBusinessHourRepository shopBusinessHourRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ClassReservationService classReservationService;
@@ -112,15 +120,17 @@ class ClassReservationServiceTest {
 
         assertThat(response.openTime()).isEqualTo("10:00");
         assertThat(response.closeTime()).isEqualTo("13:00");
-        assertThat(response.slots()).hasSize(2);
+        assertThat(response.slots()).hasSize(3);
         assertThat(response.slots())
-                .extracting(AvailableClassSlotsResponse.Slot::label)
-                .containsExactly("10:00", "12:00");
+                .extracting(AvailableClassSlotsResponse.Slot::time)
+                .containsExactly("10:00", "11:00", "12:00");
         assertThat(response.slots())
                 .extracting(AvailableClassSlotsResponse.Slot::sessionId)
-                .containsExactly(100L, 102L);
+                .containsExactly(100L, 101L, 102L);
         assertThat(response.slots().get(0).remainingCapacity()).isEqualTo(3);
-        assertThat(response.slots().get(1).remainingCapacity()).isEqualTo(4);
+        assertThat(response.slots().get(1).remainingCapacity()).isEqualTo(0);
+        assertThat(response.slots().get(1).available()).isFalse();
+        assertThat(response.slots().get(2).remainingCapacity()).isEqualTo(4);
     }
 
     @Test
@@ -209,5 +219,96 @@ class ClassReservationServiceTest {
         assertThat(response.slots())
                 .extracting(AvailableClassSlotsResponse.Slot::sessionId)
                 .containsExactly(200L, 201L);
+    }
+
+    @Test
+    void createReservation_savesReservationWhenCapacityRemains() {
+        LocalDate date = LocalDate.now().plusDays(1);
+        Shop shop = Shop.builder().shopId(1L).build();
+        User user = User.builder().id(1L).name("예약자").build();
+        Classes classes = Classes.builder()
+                .classesId(10L)
+                .shop(shop)
+                .maxCapacity(4)
+                .build();
+        ClassSession session = ClassSession.builder()
+                .sessionId(100L)
+                .classes(classes)
+                .shop(shop)
+                .startDatetime(date.atTime(10, 0))
+                .endDatetime(date.atTime(11, 0))
+                .capacity(4)
+                .sessionStatus("OPEN")
+                .build();
+        CreateClassReservationRequest request = new CreateClassReservationRequest(
+                10L,
+                100L,
+                2,
+                "홍길동",
+                "창가 자리면 좋아요"
+        );
+
+        given(classesRepository.findById(10L)).willReturn(Optional.of(classes));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(classSessionRepository.findBySessionId(100L))
+                .willReturn(Optional.of(session));
+        given(classReservationRepository.sumGuestCountBySessionId(100L)).willReturn(1);
+        given(classReservationRepository.save(org.mockito.ArgumentMatchers.any(ClassReservation.class)))
+                .willAnswer(invocation -> {
+                    ClassReservation reservation = invocation.getArgument(0);
+                    return ClassReservation.builder()
+                            .reservationId(999L)
+                            .guestCount(reservation.getGuestCount())
+                            .reservationTime(reservation.getReservationTime())
+                            .reservationStatus(reservation.getReservationStatus())
+                            .reservationName(reservation.getReservationName())
+                            .memo(reservation.getMemo())
+                            .user(reservation.getUser())
+                            .classes(reservation.getClasses())
+                            .classSession(reservation.getClassSession())
+                            .build();
+                });
+
+        CreateClassReservationResponse response = classReservationService.createReservation(1L, request);
+
+        assertThat(response.reservationId()).isEqualTo(999L);
+        assertThat(response.reservationStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void createReservation_throwsWhenCapacityExceeded() {
+        LocalDate date = LocalDate.now().plusDays(1);
+        Shop shop = Shop.builder().shopId(1L).build();
+        User user = User.builder().id(1L).name("예약자").build();
+        Classes classes = Classes.builder()
+                .classesId(10L)
+                .shop(shop)
+                .maxCapacity(4)
+                .build();
+        ClassSession session = ClassSession.builder()
+                .sessionId(100L)
+                .classes(classes)
+                .shop(shop)
+                .startDatetime(date.atTime(10, 0))
+                .endDatetime(date.atTime(11, 0))
+                .capacity(4)
+                .sessionStatus("OPEN")
+                .build();
+        CreateClassReservationRequest request = new CreateClassReservationRequest(
+                10L,
+                100L,
+                2,
+                "홍길동",
+                null
+        );
+
+        given(classesRepository.findById(10L)).willReturn(Optional.of(classes));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(classSessionRepository.findBySessionId(100L))
+                .willReturn(Optional.of(session));
+        given(classReservationRepository.sumGuestCountBySessionId(100L)).willReturn(3);
+
+        assertThatThrownBy(() -> classReservationService.createReservation(1L, request))
+                .isInstanceOf(InvalidInputException.class);
     }
 }

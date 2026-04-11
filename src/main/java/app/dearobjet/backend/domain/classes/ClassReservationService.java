@@ -2,9 +2,13 @@ package app.dearobjet.backend.domain.classes;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
+import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
+import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
 import app.dearobjet.backend.domain.shop.entity.ShopBusinessHour;
 import app.dearobjet.backend.domain.shop.repository.ShopBusinessHourRepository;
+import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
+import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.exception.InvalidInputException;
@@ -36,6 +40,7 @@ public class ClassReservationService {
     private final ClassesRepository classesRepository;
     private final ClassSessionRepository classSessionRepository;
     private final ShopBusinessHourRepository shopBusinessHourRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public ClassReservationListResponse getReservations(Long userId, String status, int page, int size) {
@@ -48,18 +53,19 @@ public class ClassReservationService {
                 Sort.by(Sort.Direction.DESC, "reservationId")
         );
 
+        ClassReservationStatus reservationStatus = parseReservationStatus(status);
         Page<ClassReservation> reservationPage = (status == null || status.isBlank())
                 ? classReservationRepository.findByClasses_Shop_User_Id(userId, pageable)
                 : classReservationRepository.findByClasses_Shop_User_IdAndReservationStatus(
                 userId,
-                status,
+                reservationStatus,
                 pageable
         );
 
         List<ClassReservationListResponse.Item> items = new ArrayList<>();
         for (ClassReservation reservation : reservationPage.getContent()) {
             items.add(new ClassReservationListResponse.Item(
-                    reservation.getReservationStatus(),
+                    reservation.getReservationStatus() == null ? null : reservation.getReservationStatus().name(),
                     reservation.getUser() == null ? null : reservation.getUser().getName(),
                     reservation.getUser() == null ? null : reservation.getUser().getPhoneNumber(),
                     reservation.getReservationId(),
@@ -73,6 +79,51 @@ public class ClassReservationService {
                 items,
                 page,
                 reservationPage.getTotalPages()
+        );
+    }
+
+    @Transactional
+    public CreateClassReservationResponse createReservation(Long userId, CreateClassReservationRequest request) {
+        Classes classes = classesRepository.findById(request.classId())
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // 프론트가 슬롯 조회에서 받은 sessionId를 그대로 예약에 사용한다.
+        ClassSession session = classSessionRepository.findBySessionId(request.sessionId())
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 가능한 슬롯을 찾을 수 없습니다."));
+
+        validateReservationRequest(request, classes, session);
+
+        int reservedGuestCount = classReservationRepository.sumGuestCountBySessionId(session.getSessionId());
+        int capacity = session.getCapacity() != null
+                ? session.getCapacity()
+                : (classes.getMaxCapacity() == null ? 0 : classes.getMaxCapacity());
+
+        if (capacity <= 0) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "예약 가능한 정원이 없습니다.");
+        }
+
+        if (reservedGuestCount + request.guestCount() > capacity) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "남은 예약 가능 인원을 초과했습니다.");
+        }
+
+        // 신청 단계에서는 바로 확정하지 않고 PENDING 으로 저장한다.
+        ClassReservation reservation = classReservationRepository.save(ClassReservation.builder()
+                .guestCount(request.guestCount())
+                .reservationTime(session.getStartDatetime())
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .reservationName(request.reservationName())
+                .memo(request.memo())
+                .user(user)
+                .classes(classes)
+                .classSession(session)
+                .build());
+
+        return new CreateClassReservationResponse(
+                reservation.getReservationId(),
+                reservation.getReservationStatus().name()
         );
     }
 
@@ -92,15 +143,16 @@ public class ClassReservationService {
                 .orElse(null);
 
         if (businessHour == null || businessHour.getOpenMinutes() == null || businessHour.getCloseMinutes() == null) {
-            return new AvailableClassSlotsResponse(classId, date, null, null, List.of());
+            return new AvailableClassSlotsResponse(date, null, null, List.of());
         }
 
         int openMinutes = businessHour.getOpenMinutes();
         int closeMinutes = businessHour.getCloseMinutes();
         if (openMinutes >= closeMinutes) {
-            return new AvailableClassSlotsResponse(classId, date, null, null, List.of());
+            return new AvailableClassSlotsResponse(date, null, null, List.of());
         }
 
+        // 슬롯은 영업시간 기준으로 class_sessions 에 동기화한 뒤 응답에 사용한다.
         List<ClassSession> sessions = syncSessions(classes, date, openMinutes, closeMinutes);
 
         List<ClassReservation> reservations = classReservationRepository.findByClasses_ClassesIdAndReservationTimeBetween(
@@ -131,21 +183,18 @@ public class ClassReservationService {
             int reservedGuestCount = reservedGuestCountByTime.getOrDefault(slotTime, 0);
             Integer sessionCapacity = session.getCapacity() != null ? session.getCapacity() : maxCapacity;
             Integer remainingCapacity = sessionCapacity == null ? null : Math.max(sessionCapacity - reservedGuestCount, 0);
-
-            if (remainingCapacity != null && remainingCapacity <= 0) {
-                continue;
-            }
+            // 프론트가 "예약 가능 / 마감"을 바로 표시할 수 있도록 슬롯은 숨기지 않고 상태만 내려준다.
+            boolean available = remainingCapacity == null || remainingCapacity > 0;
 
             slots.add(new AvailableClassSlotsResponse.Slot(
                     session.getSessionId(),
-                    slotTime,
                     slotTime.toLocalTime().format(TIME_LABEL_FORMATTER),
-                    remainingCapacity
+                    remainingCapacity,
+                    available
             ));
         }
 
         return new AvailableClassSlotsResponse(
-                classId,
                 date,
                 formatMinutes(openMinutes),
                 formatMinutes(closeMinutes),
@@ -173,6 +222,7 @@ public class ClassReservationService {
 
             ClassSession existingSession = existingByStartTime.get(startDatetime);
             if (existingSession != null) {
+                // 이미 있던 슬롯은 정원/상태만 최신 클래스 설정에 맞춰 보정한다.
                 if (classes.getMaxCapacity() != null) {
                     existingSession.updateCapacity(classes.getMaxCapacity());
                 }
@@ -182,6 +232,7 @@ public class ClassReservationService {
                 continue;
             }
 
+            // 아직 없는 슬롯만 영업시간 기준으로 1시간 단위 생성한다.
             newSessions.add(ClassSession.builder()
                     .classes(classes)
                     .shop(classes.getShop())
@@ -199,6 +250,36 @@ public class ClassReservationService {
 
         existingSessions.sort(Comparator.comparing(ClassSession::getStartDatetime));
         return existingSessions;
+    }
+
+    private void validateReservationRequest(
+            CreateClassReservationRequest request,
+            Classes classes,
+            ClassSession session
+    ) {
+        if (!session.getClasses().getClassesId().equals(classes.getClassesId())) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "클래스와 예약 슬롯이 일치하지 않습니다.");
+        }
+
+        if (session.getStartDatetime().isBefore(LocalDateTime.now())) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "지난 시간은 예약할 수 없습니다.");
+        }
+
+        if (session.getSessionStatus() != null && !"OPEN".equalsIgnoreCase(session.getSessionStatus())) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "현재 예약할 수 없는 슬롯입니다.");
+        }
+    }
+
+    private ClassReservationStatus parseReservationStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+
+        try {
+            return ClassReservationStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "예약 상태는 PENDING, CONFIRMED, CANCELED 중 하나여야 합니다.");
+        }
     }
 
     private String formatMinutes(int minutes) {
