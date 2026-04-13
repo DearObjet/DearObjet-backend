@@ -307,4 +307,39 @@ class ClassReservationServiceTest {
         assertThatThrownBy(() -> classReservationService.createReservation(1L, request))
                 .isInstanceOf(InvalidInputException.class);
     }
+
+    @Test
+    void createReservation_throwsWhenRequesterIsClassOwner() {
+        LocalDate date = LocalDate.now().plusDays(1);
+        User owner = User.builder().id(1L).name("개설자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+        Classes classes = Classes.builder()
+                .classesId(10L)
+                .shop(shop)
+                .maxCapacity(4)
+                .build();
+        ClassSession session = ClassSession.builder()
+                .sessionId(100L)
+                .classes(classes)
+                .shop(shop)
+                .startDatetime(date.atTime(10, 0))
+                .endDatetime(date.atTime(11, 0))
+                .capacity(4)
+                .sessionStatus("OPEN")
+                .build();
+        CreateClassReservationRequest request = new CreateClassReservationRequest(
+                100L,
+                1,
+                "개설자",
+                null
+        );
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(classSessionRepository.findBySessionId(100L))
+                .willReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> classReservationService.createReservation(1L, request))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessage("클래스를 개설한 본인은 예약할 수 없습니다.");
+    }
 }

@@ -92,7 +92,7 @@ public class ClassReservationService {
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 가능한 슬롯을 찾을 수 없습니다."));
         Classes classes = session.getClasses();
 
-        validateReservationRequest(request, classes, session);
+        validateReservationRequest(user, request, classes, session);
 
         int reservedGuestCount = classReservationRepository.sumGuestCountBySessionId(session.getSessionId());
         int capacity = session.getCapacity() != null
@@ -251,10 +251,18 @@ public class ClassReservationService {
     }
 
     private void validateReservationRequest(
+            User user,
             CreateClassReservationRequest request,
             Classes classes,
             ClassSession session
     ) {
+        if (classes.getShop() != null
+                && classes.getShop().getUser() != null
+                && classes.getShop().getUser().getId() != null
+                && classes.getShop().getUser().getId().equals(user.getId())) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "클래스를 개설한 본인은 예약할 수 없습니다.");
+        }
+
         if (!session.getClasses().getClassesId().equals(classes.getClassesId())) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT, "클래스와 예약 슬롯이 일치하지 않습니다.");
         }
