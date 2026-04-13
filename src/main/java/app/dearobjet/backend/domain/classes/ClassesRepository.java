@@ -13,5 +13,8 @@ public interface ClassesRepository extends JpaRepository<Classes, Long> {
     Page<Classes> findByShop_User_Id(Long userId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"shop", "shop.user"})
+    Page<Classes> findByShop_ShopId(Long shopId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"shop", "shop.user"})
     Optional<Classes> findByClassesIdAndShop_User_Id(Long classesId, Long userId);
 }

@@ -1,5 +1,8 @@
 package app.dearobjet.backend.domain.shop.service;
 
+import app.dearobjet.backend.domain.classes.ClassReservationRepository;
+import app.dearobjet.backend.domain.classes.ClassSession;
+import app.dearobjet.backend.domain.classes.ClassSessionRepository;
 import app.dearobjet.backend.domain.shop.dto.DayBusinessHoursRequest;
 import app.dearobjet.backend.domain.shop.dto.DayBusinessHoursResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopBusinessHoursResponse;
@@ -12,7 +15,10 @@ import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.exception.InvalidInputException;
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +31,8 @@ public class ShopServiceImpl implements ShopService {
 
     private final ShopRepository shopRepository;
     private final ShopBusinessHourRepository shopBusinessHourRepository;
+    private final ClassSessionRepository classSessionRepository;
+    private final ClassReservationRepository classReservationRepository;
 
     @Override
     public ShopBusinessHoursResponse updateBusinessHours(Long userId, UpdateBusinessHoursRequest request) {
@@ -42,6 +50,8 @@ public class ShopServiceImpl implements ShopService {
         upsertDayHours(shop, existingHours, DayOfWeek.FRIDAY, "friday", request.friday());
         upsertDayHours(shop, existingHours, DayOfWeek.SATURDAY, "saturday", request.saturday());
         upsertDayHours(shop, existingHours, DayOfWeek.SUNDAY, "sunday", request.sunday());
+        // 영업시간이 바뀌면 미래 슬롯도 같이 정리해 두어야 조회/예약 데이터가 꼬이지 않는다.
+        reconcileFutureSessions(shop, existingHours);
 
         return toBusinessHoursResponse(existingHours);
     }
@@ -152,5 +162,56 @@ public class ShopServiceImpl implements ShopService {
         int hour = minutes / 60;
         int minute = minutes % 60;
         return String.format("%02d:%02d", hour, minute);
+    }
+
+    private void reconcileFutureSessions(Shop shop, Map<DayOfWeek, ShopBusinessHour> hoursByDay) {
+        List<ClassSession> futureSessions = classSessionRepository
+                .findByShop_ShopIdAndStartDatetimeGreaterThanEqualOrderByStartDatetimeAsc(
+                        shop.getShopId(),
+                        LocalDateTime.now()
+                );
+
+        for (ClassSession session : futureSessions) {
+            ShopBusinessHour businessHour = hoursByDay.get(session.getStartDatetime().getDayOfWeek());
+            if (isWithinBusinessHours(session, businessHour)) {
+                // 영업시간 안에 남아 있는 슬롯은 계속 예약 가능 상태로 유지한다.
+                session.updateSessionStatus("OPEN");
+                if (session.getClasses().getMaxCapacity() != null) {
+                    session.updateCapacity(session.getClasses().getMaxCapacity());
+                }
+                continue;
+            }
+
+            long activeReservationCount = classReservationRepository
+                    .countActiveReservationsBySessionId(session.getSessionId());
+            if (activeReservationCount > 0) {
+                // 이미 예약이 걸린 슬롯은 삭제하지 않고 닫아서 추가 예약만 막는다.
+                session.updateSessionStatus("CLOSED");
+                continue;
+            }
+
+            // 예약이 전혀 없는 미래 슬롯은 안전하게 삭제한다.
+            classSessionRepository.delete(session);
+        }
+    }
+
+    private boolean isWithinBusinessHours(ClassSession session, ShopBusinessHour businessHour) {
+        if (businessHour == null || businessHour.getOpenMinutes() == null || businessHour.getCloseMinutes() == null) {
+            return false;
+        }
+
+        LocalTime openTime = LocalTime.of(businessHour.getOpenMinutes() / 60, businessHour.getOpenMinutes() % 60);
+        LocalTime closeTime = businessHour.getCloseMinutes() == 24 * 60
+                ? LocalTime.MIDNIGHT
+                : LocalTime.of(businessHour.getCloseMinutes() / 60, businessHour.getCloseMinutes() % 60);
+
+        LocalTime sessionStart = session.getStartDatetime().toLocalTime();
+        LocalTime sessionEnd = session.getEndDatetime().toLocalTime();
+
+        if (businessHour.getCloseMinutes() == 24 * 60) {
+            return !sessionStart.isBefore(openTime);
+        }
+
+        return !sessionStart.isBefore(openTime) && !sessionEnd.isAfter(closeTime);
     }
 }

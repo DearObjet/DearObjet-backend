@@ -68,8 +68,37 @@ public class ClassesService {
             items.add(new ClassListResponse.Item(
                     classes.getClassesId(),
                     classes.getClassName(),
+                    classes.getClassDescription(),
                     getFirstImageUrl(classes),
-                    classes.getMaxCapacity()
+                    classes.getMaxCapacity(),
+                    classes.getNotes()
+            ));
+        }
+
+        return new ClassListResponse(items, page, classPage.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public ClassListResponse getClassesByShop(Long shopId, int page, int size) {
+        shopRepository.findById(shopId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
+
+        Pageable pageable = PageRequest.of(
+                Math.max(page - 1, 0),
+                size,
+                Sort.by(Sort.Direction.DESC, "classesId")
+        );
+
+        Page<Classes> classPage = classesRepository.findByShop_ShopId(shopId, pageable);
+        List<ClassListResponse.Item> items = new ArrayList<>();
+        for (Classes classes : classPage.getContent()) {
+            items.add(new ClassListResponse.Item(
+                    classes.getClassesId(),
+                    classes.getClassName(),
+                    classes.getClassDescription(),
+                    getFirstImageUrl(classes),
+                    classes.getMaxCapacity(),
+                    classes.getNotes()
             ));
         }
 
