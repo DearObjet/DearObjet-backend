@@ -74,7 +74,7 @@ public class UserServiceImpl implements UserService {
                 request.getMarketingAgreement()
         );
 
-        user.changeRole(Role.USER);
+        user.changeRole(Role.CUSTOMER);
     }
 
     public void completeArtistSignup(
