@@ -68,8 +68,10 @@ public class ClassesService {
             items.add(new ClassListResponse.Item(
                     classes.getClassesId(),
                     classes.getClassName(),
+                    classes.getClassDescription(),
                     getFirstImageUrl(classes),
-                    classes.getMaxCapacity()
+                    classes.getMaxCapacity(),
+                    classes.getNotes()
             ));
         }
 
@@ -93,8 +95,10 @@ public class ClassesService {
             items.add(new ClassListResponse.Item(
                     classes.getClassesId(),
                     classes.getClassName(),
+                    classes.getClassDescription(),
                     getFirstImageUrl(classes),
-                    classes.getMaxCapacity()
+                    classes.getMaxCapacity(),
+                    classes.getNotes()
             ));
         }
 

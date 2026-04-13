@@ -17,7 +17,9 @@ public class ClassListResponse {
     public static class Item {
         private final Long classId;
         private final String className;
+        private final String classDescription;
         private final String firstImageUrl;
         private final Integer maxCapacity;
+        private final String notes;
     }
 }
