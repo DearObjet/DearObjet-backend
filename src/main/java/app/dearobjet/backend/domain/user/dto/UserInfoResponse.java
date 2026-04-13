@@ -10,14 +10,14 @@ import lombok.Getter;
 public class UserInfoResponse {
     private final String email;
     private final String name;
-    private final String profileImage;
+    private final String profileUrl;
     private final Role role;
 
     public static UserInfoResponse from(User user) {
         return new UserInfoResponse(
                 user.getEmail(),
                 user.getName(),
-                user.getProfileImage(),
+                user.getProfileUrl(),
                 user.getRole()
         );
     }

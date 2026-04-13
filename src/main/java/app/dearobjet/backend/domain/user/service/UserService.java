@@ -1,7 +1,9 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateUserProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
+import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,6 +14,10 @@ public interface UserService {
     User getOrCreateKakaoUser(String socialId, String email);
 
     UserInfoResponse getUserInfo(Long userId);
+
+    UserProfileResponse getUserProfile(Long userId);
+
+    UserProfileResponse updateUserProfile(Long userId, UpdateUserProfileRequest request, MultipartFile profileImage);
 
     // CUSTOMER 가입
     void completeSignup(

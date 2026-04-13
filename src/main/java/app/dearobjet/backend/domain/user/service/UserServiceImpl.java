@@ -5,7 +5,9 @@ import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.shop.service.ShopCoordinate;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateUserProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
+import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
@@ -48,6 +50,40 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserInfoResponse getUserInfo(Long userId) {
         return UserInfoResponse.from(getUser(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(Long userId) {
+        return UserProfileResponse.from(getUser(userId));
+    }
+
+    @Override
+    public UserProfileResponse updateUserProfile(
+            Long userId,
+            UpdateUserProfileRequest request,
+            MultipartFile profileImage
+    ) {
+        User user = getUser(userId);
+
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
+            user.changePhone(request.phoneNumber());
+        }
+
+        if (request.name() != null) {
+            user.changeName(request.name());
+        }
+        if (request.smsAgreement() != null) {
+            user.changeSmsAgreement(request.smsAgreement());
+        }
+        if (request.marketingAgreement() != null) {
+            user.changeMarketingAgreement(request.marketingAgreement());
+        }
+        if (profileImage != null && !profileImage.isEmpty()) {
+            user.changeProfileUrl(s3FileUploadService.uploadProfileImage(profileImage, userId));
+        }
+
+        return UserProfileResponse.from(user);
     }
 
     private User createTempUser(String socialId, String email) {

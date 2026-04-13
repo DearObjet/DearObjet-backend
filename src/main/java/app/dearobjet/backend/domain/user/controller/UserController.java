@@ -1,7 +1,9 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateUserProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
+import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.api.ApiResponse;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +36,28 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(ApiResponse.of(userService.getUserInfo(userDetails.getUserId())));
+    }
+
+    @GetMapping("/me/profile")
+    @Operation(summary = "내 프로필 조회")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(userService.getUserProfile(userDetails.getUserId())));
+    }
+
+    @PatchMapping(value = "/me/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "내 프로필 수정")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateMyProfile(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestPart("request") UpdateUserProfileRequest request,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                userService.updateUserProfile(userDetails.getUserId(), request, profileImage)
+        ));
     }
 
     // CUSTOMER 가입 완료
