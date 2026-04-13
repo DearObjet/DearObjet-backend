@@ -260,7 +260,10 @@ public class ClassReservationService {
                 && classes.getShop().getUser() != null
                 && classes.getShop().getUser().getId() != null
                 && classes.getShop().getUser().getId().equals(user.getId())) {
-            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "클래스를 개설한 본인은 예약할 수 없습니다.");
+            throw new InvalidInputException(
+                    ErrorCode.CLASS_OWNER_CANNOT_RESERVE,
+                    "클래스를 개설한 본인은 예약할 수 없습니다."
+            );
         }
 
         if (!session.getClasses().getClassesId().equals(classes.getClassesId())) {
