@@ -7,10 +7,7 @@ import lombok.*;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -137,10 +134,12 @@ public class ChatRoom extends BaseTimeEntity {
      * 특정 사용자를 제외한 모든 참여자의 읽지 않은 메시지 수 증가
      *
      * @param senderUserId 메시지 발신자 ID (이 사용자는 제외)
+     * @param activeUsers 현재 접속중인 사용자
      */
-    public void incrementUnreadCount(Long senderUserId) {
-        participants.stream()
+    public void incrementUnreadCountExcluding(Long senderUserId, Set<Long> activeUsers) {
+        this.getParticipants().stream()
                 .filter(p -> !p.getUser().getId().equals(senderUserId))
+                .filter(p -> !activeUsers.contains(p.getUser().getId()))
                 .forEach(ChatParticipant::incrementUnreadCount);
     }
 

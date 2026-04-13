@@ -13,11 +13,12 @@ public class NoticeController {
 
     @GetMapping("/notices")
     public ApiResponse<NoticeListResponse> getNotices(
+            @RequestParam NoticeTarget target,
             @RequestParam(required = false) NoticeCategory category, // null이면 공지 전체 목록 조회
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse.of(noticeQueryService.getNotices(category, page, size));
+        return ApiResponse.of(noticeQueryService.getNotices(target, category, page, size));
     }
 
     @GetMapping("/notices/{noticeId}")

@@ -87,7 +87,7 @@ public class ChatWebSocketController {
         validateParticipant(roomId, userId);
 
         // 타이핑 이벤트를 Redis Pub/Sub으로 브로드캐스트
-        RedisChatMessageDto typingEvent = RedisChatMessageDto.ofTyping(roomId, userId, typing.getUserName());
+        RedisChatMessageDto typingEvent = RedisChatMessageDto.ofTyping(roomId, userId, typing.getUserName(), typing.isTyping());
         messagePublisher.publishToRoom(typingEvent);
 
         log.debug("Typing event - roomId: {}, userId: {}", roomId, userId);

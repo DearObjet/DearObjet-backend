@@ -14,6 +14,7 @@ import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Redis Pub/Sub 메시지 구독 서비스
@@ -43,8 +44,8 @@ public class ChatMessageSubscriber implements MessageListener {
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            String channel = new String(message.getChannel());
-            String body = new String(message.getBody());
+            String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
+            String body = new String(message.getBody(), StandardCharsets.UTF_8);
 
             RedisChatMessageDto redisMessage = chatObjectMapper.readValue(body, RedisChatMessageDto.class);
             log.debug("Received message from channel {}: {}", channel, redisMessage.getEventType());
@@ -77,7 +78,7 @@ public class ChatMessageSubscriber implements MessageListener {
             case TYPING -> {
                 // 타이핑 상태 전달
                 TypingIndicatorDto dto = TypingIndicatorDto.of(
-                        roomId, message.getSenderId(), message.getSenderName(), true);
+                        roomId, message.getSenderId(), message.getSenderName(), message.getTyping());
                 messagingTemplate.convertAndSend(destination + "/typing", dto);
             }
             case READ -> {

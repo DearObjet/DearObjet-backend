@@ -19,8 +19,15 @@ public class Notice {
     private Long notificationId;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private NoticeTarget target;   // USER | ARTIST_SHOP
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private NoticeCategory category;   // NOTICE | NEWS | EVENT | FESTIVAL
+    private NoticeCategory category;   // IMPORTANT | GENERAL | FESTIVAL | CULTURE_PERFORMANCE | EVENT
+
+    @Column(length = 30)
+    private String badge;
 
     private String title;
 

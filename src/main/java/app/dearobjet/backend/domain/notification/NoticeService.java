@@ -5,6 +5,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,14 +16,16 @@ public class NoticeService {
 
     private final NoticeRepository noticeRepository;
 
-    public NoticeListResponse getNotices(NoticeCategory category, int page, int size) {
+    private static final int NEW_DAYS = 7;
+
+    public NoticeListResponse getNotices(NoticeTarget target, NoticeCategory category, int page, int size) {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0), size, Sort.by(Sort.Direction.DESC, "publishedAt")
         );
 
         Page<Notice> noticePage = (category == null)
-                ? noticeRepository.findAll(pageable)
-                : noticeRepository.findByCategory(category, pageable);
+                ? noticeRepository.findByTarget(target, pageable)
+                : noticeRepository.findByTargetAndCategory(target, category, pageable);
 
         List<NoticeResponse> noticeResponses = new ArrayList<>();
         for (Notice notice : noticePage.getContent()) {
@@ -40,12 +43,17 @@ public class NoticeService {
     }
 
     private NoticeResponse toResponse(Notice notice) {
+        boolean isNew = notice.getPublishedAt() != null
+                && notice.getPublishedAt().isAfter(OffsetDateTime.now().minusDays(NEW_DAYS));
         return new NoticeResponse(
                 notice.getNotificationId(),
+                notice.getTarget(),
                 notice.getCategory(),
+                notice.getBadge(),
                 notice.getTitle(),
                 notice.getBody(),
-                notice.getPublishedAt()
+                notice.getPublishedAt(),
+                isNew
         );
     }
 }

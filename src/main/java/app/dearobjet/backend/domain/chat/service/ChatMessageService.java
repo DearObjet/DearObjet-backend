@@ -13,6 +13,7 @@ import app.dearobjet.backend.domain.chat.repository.ChatRoomRepository;
 import app.dearobjet.backend.domain.chat.service.redis.ChatMessagePublisher;
 import app.dearobjet.backend.domain.chat.service.redis.MessageCacheRedisService;
 import app.dearobjet.backend.domain.chat.service.redis.UnreadCountRedisService;
+import app.dearobjet.backend.domain.chat.service.redis.PresenceRedisService;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
@@ -50,6 +51,7 @@ public class ChatMessageService {
     private final ChatMessagePublisher messagePublisher;
     private final UnreadCountRedisService unreadCountRedisService;
     private final MessageCacheRedisService messageCacheRedisService;
+    private final PresenceRedisService presenceRedisService;
 
     /**
      * 메시지 전송
@@ -97,10 +99,19 @@ public class ChatMessageService {
         Set<Long> participantIds = chatRoom.getParticipants().stream()
                 .map(p -> p.getUser().getId())
                 .collect(Collectors.toSet());
-        unreadCountRedisService.incrementForParticipants(roomId, participantIds, senderId);
+
+        // 현재 채팅방에 접속 중인 유저 조회
+        Set<Long> activeUsers = presenceRedisService.getOnlineUsersInRoom(roomId);
+
+        // 접속 중인 유저는 unread 증가 제외
+        for (Long participantId : participantIds) {
+            if (!participantId.equals(senderId) && !activeUsers.contains(participantId)) {
+                unreadCountRedisService.incrementUnreadCount(participantId, roomId);
+            }
+        }
 
         // DB에도 unread 카운트 증가 (정합성 유지)
-        chatRoom.incrementUnreadCount(senderId);
+        chatRoom.incrementUnreadCountExcluding(senderId, activeUsers);
 
         // Redis 캐시에 메시지 추가
         messageCacheRedisService.addRecentMessage(message, senderId);

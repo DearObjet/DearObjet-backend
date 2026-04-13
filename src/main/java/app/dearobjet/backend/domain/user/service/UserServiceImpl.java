@@ -1,10 +1,11 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
 import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.shop.service.ShopCoordinate;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
-import app.dearobjet.backend.domain.user.dto.UpdateMyPageRequest;
-import app.dearobjet.backend.domain.user.dto.UserMyPageResponse;
+import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
@@ -29,6 +30,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
     private final ShopRepository shopRepository;
+    private final KakaoLocalClient kakaoLocalClient;
     private final S3FileUploadService s3FileUploadService;
 
     private final SmsAuthService smsAuthService;
@@ -40,6 +42,12 @@ public class UserServiceImpl implements UserService {
     public User getOrCreateKakaoUser(String socialId, String email) {
         return userRepository.findBySocialId(socialId)
                 .orElseGet(() -> createTempUser(socialId, email));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserInfoResponse getUserInfo(Long userId) {
+        return UserInfoResponse.from(getUser(userId));
     }
 
     private User createTempUser(String socialId, String email) {
@@ -66,7 +74,7 @@ public class UserServiceImpl implements UserService {
                 request.getMarketingAgreement()
         );
 
-        user.changeRole(Role.USER);
+        user.changeRole(Role.CUSTOMER);
     }
 
     public void completeArtistSignup(
@@ -121,12 +129,16 @@ public class UserServiceImpl implements UserService {
 
         user.changeRole(Role.SHOP);
 
+        ShopCoordinate coordinate = kakaoLocalClient.searchAddress(request.getBusinessAddress());
+
         Shop shop = Shop.builder()
                 .user(user)
                 .businessNumber(request.getBusinessNumber())
                 .businessName(request.getBusinessName())
                 .ownerName(request.getOwnerName())
                 .businessAddress(request.getBusinessAddress())
+                .latitude(coordinate == null ? null : coordinate.latitude())
+                .longitude(coordinate == null ? null : coordinate.longitude())
                 .businessLicenseUrl(businessLicenseUrl)
                 .businessType(request.getBusinessType())
                 .businessCategory(request.getBusinessCategory())
@@ -159,41 +171,6 @@ public class UserServiceImpl implements UserService {
 
         // 2. 인증 1회성 소모
         smsAuthService.consumeVerified(newPhone);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserMyPageResponse getMyPage(Long userId) {
-        User user = getUser(userId);
-        return UserMyPageResponse.from(user);
-    }
-
-    @Override
-    public void updateMyPage(Long userId, UpdateMyPageRequest request, MultipartFile profileImageFile) {
-        User user = getUser(userId);
-        String profileImageUrl = user.getProfileImage();
-
-        // TODO: 실운영 SMS 인증 안정화 후 재활성화
-        // boolean isPhoneChanged = !Objects.equals(user.getPhoneNumber(), request.getPhoneNumber());
-        // if (isPhoneChanged) {
-        //     smsAuthService.assertVerified(request.getPhoneNumber());
-        // }
-
-        if (profileImageFile != null && !profileImageFile.isEmpty()) {
-            profileImageUrl = s3FileUploadService.uploadProfileImage(profileImageFile, userId);
-        }
-
-        user.updateMyPage(
-                request.getName(),
-                request.getPhoneNumber(),
-                profileImageUrl,
-                request.getSmsAgreement(),
-                request.getMarketingAgreement()
-        );
-
-        // if (isPhoneChanged) {
-        //     smsAuthService.consumeVerified(request.getPhoneNumber());
-        // }
     }
 
     private User getUser(Long userId) {

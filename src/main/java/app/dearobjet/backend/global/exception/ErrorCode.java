@@ -31,6 +31,9 @@ public enum ErrorCode {
     GROUP_CHAT_MIN_PARTICIPANTS(HttpStatus.BAD_REQUEST, "CH005", "그룹 채팅은 최소 3명 이상이어야 합니다"),
     CHAT_MESSAGE_PUBLISH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "CH006", "메시지 발행에 실패했습니다"),
 
+    // Class Reservation (CR0XX)
+    CLASS_OWNER_CANNOT_RESERVE(HttpStatus.BAD_REQUEST, "CR001", "클래스를 개설한 본인은 예약할 수 없습니다"),
+
     // Auth (A0XX)
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다"),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "만료된 토큰입니다"),

@@ -66,10 +66,10 @@ public class S3FileUploadService {
         }
     }
 
-    public String uploadProfileImage(MultipartFile file, Long userId) {
+    public String uploadClassImage(MultipartFile file, Long userId) {
         validateImageFile(file);
 
-        String key = buildProfileImageKey(userId, file.getOriginalFilename());
+        String key = buildClassImageKey(userId, file.getOriginalFilename());
         String contentType = file.getContentType();
 
         try {
@@ -110,7 +110,7 @@ public class S3FileUploadService {
 
     private void validateImageFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "프로필 이미지 파일은 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "클래스 사진 파일은 필수입니다.");
         }
 
         String contentType = file.getContentType();
@@ -127,9 +127,9 @@ public class S3FileUploadService {
         return "business-license/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
-    private String buildProfileImageKey(Long userId, String originalFilename) {
+    private String buildClassImageKey(Long userId, String originalFilename) {
         String extension = extractExtension(originalFilename);
-        return "profile-image/" + userId + "/" + UUID.randomUUID() + extension;
+        return "class-image/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
     private String extractExtension(String filename) {

@@ -17,14 +17,14 @@ public class TypingIndicatorDto {
     private String roomId;
     private Long userId;
     private String userName;
-    private boolean isTyping;
+    private boolean typing;
 
-    public static TypingIndicatorDto of(String roomId, Long userId, String userName, boolean isTyping) {
+    public static TypingIndicatorDto of(String roomId, Long userId, String userName, boolean typing) {
         return TypingIndicatorDto.builder()
                 .roomId(roomId)
                 .userId(userId)
                 .userName(userName)
-                .isTyping(isTyping)
+                .typing(typing)
                 .build();
     }
 }
