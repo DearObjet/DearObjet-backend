@@ -1,7 +1,9 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.BusinessProfileDetailResponse;
 import app.dearobjet.backend.domain.user.dto.UpdateUserProfileRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateBusinessProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
 import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
@@ -16,6 +18,10 @@ public interface UserService {
     UserInfoResponse getUserInfo(Long userId);
 
     UserProfileResponse getUserProfile(Long userId);
+
+    BusinessProfileDetailResponse getBusinessProfileDetail(Long userId);
+
+    BusinessProfileDetailResponse updateBusinessProfileDetail(Long userId, UpdateBusinessProfileRequest request);
 
     UserProfileResponse updateUserProfile(Long userId, UpdateUserProfileRequest request, MultipartFile profileImage);
 

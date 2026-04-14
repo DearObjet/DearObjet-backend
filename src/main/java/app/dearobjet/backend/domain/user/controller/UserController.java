@@ -1,6 +1,8 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.BusinessProfileDetailResponse;
+import app.dearobjet.backend.domain.user.dto.UpdateBusinessProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UpdateUserProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
 import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
@@ -45,6 +47,27 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(ApiResponse.of(userService.getUserProfile(userDetails.getUserId())));
+    }
+
+    @GetMapping("/me/business-profile")
+    @Operation(summary = "사업자 개인정보 조회")
+    public ResponseEntity<ApiResponse<BusinessProfileDetailResponse>> getMyBusinessProfile(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(userService.getBusinessProfileDetail(userDetails.getUserId())));
+    }
+
+    @PatchMapping("/me/business-profile")
+    @Operation(summary = "사업자 개인정보 수정")
+    public ResponseEntity<ApiResponse<BusinessProfileDetailResponse>> updateMyBusinessProfile(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateBusinessProfileRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.of(
+                userService.updateBusinessProfileDetail(userDetails.getUserId(), request)
+        ));
     }
 
     @PatchMapping(value = "/me/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

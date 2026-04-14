@@ -1,9 +1,7 @@
 package app.dearobjet.backend.domain.shop.entity;
 
+import app.dearobjet.backend.domain.user.entity.BusinessProfile;
 import app.dearobjet.backend.domain.user.entity.User;
-import app.dearobjet.backend.domain.user.enums.BusinessCategory;
-import app.dearobjet.backend.domain.user.enums.BusinessType;
-import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,15 +23,9 @@ public class Shop extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    // 사업자 정보
-    @Column(name = "business_number", nullable = false, unique = true)
-    private String businessNumber;
-
-    @Column(name = "business_name")
-    private String businessName;
-
-    @Column(name = "business_adress")
-    private String businessAddress;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "business_profile_id", nullable = false, unique = true)
+    private BusinessProfile businessProfile;
 
     @Column(name = "latitude")
     private Double latitude;
@@ -41,11 +33,8 @@ public class Shop extends BaseTimeEntity {
     @Column(name = "longitude")
     private Double longitude;
 
-    @Column(name = "owner_name")
-    private String ownerName;
-
-    @Column(name = "business_license_url")
-    private String businessLicenseUrl;
+    @Column(name = "instagram_id")
+    private String instagramId;
 
     @Column(name = "shop_name")
     private String shopName;
@@ -53,23 +42,24 @@ public class Shop extends BaseTimeEntity {
     @Column(name = "shop_description")
     private String shopDescription;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "business_type", nullable = false)
-    private BusinessType businessType;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "business_category", nullable = false)
-    private BusinessCategory businessCategory;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "specialty", nullable = false)
-    private Specialty specialty;
-
-    @Column(name="review_data_agreement", nullable=false)
-    private Boolean reviewDataAgreement = false;
-
     public void updateCoordinates(Double latitude, Double longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
+    }
+
+    public String getShopName() {
+        return businessProfile == null ? null : businessProfile.getBusinessName();
+    }
+
+    public String getBusinessName() {
+        return businessProfile == null ? null : businessProfile.getBusinessName();
+    }
+
+    public String getBusinessAddress() {
+        return businessProfile == null ? null : businessProfile.getBusinessAddress();
+    }
+
+    public void changeInstagramId(String instagramId) {
+        this.instagramId = instagramId;
     }
 }
