@@ -8,6 +8,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class UserInfoResponse {
+    private final Long userId;
     private final String email;
     private final String name;
     private final String profileImage;
@@ -15,6 +16,7 @@ public class UserInfoResponse {
 
     public static UserInfoResponse from(User user) {
         return new UserInfoResponse(
+                user.getId(),
                 user.getEmail(),
                 user.getName(),
                 user.getProfileImage(),
