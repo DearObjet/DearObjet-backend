@@ -82,6 +82,10 @@ public class BusinessProfile extends BaseTimeEntity {
     @Column(name = "bankbook_image_url")
     private String bankbookImageUrl;
 
+    @Builder.Default
+    @Column(name = "is_bankbook_verified", nullable = false)
+    private Boolean isBankbookVerified = false;
+
     @Column(name = "tax_invoice_email")
     private String taxInvoiceEmail;
 
@@ -114,5 +118,9 @@ public class BusinessProfile extends BaseTimeEntity {
 
     public void changeTaxInvoiceEmail(String taxInvoiceEmail) {
         this.taxInvoiceEmail = taxInvoiceEmail;
+    }
+
+    public void changeBankbookVerified(Boolean isBankbookVerified) {
+        this.isBankbookVerified = isBankbookVerified;
     }
 }

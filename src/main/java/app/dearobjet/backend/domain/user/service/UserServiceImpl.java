@@ -83,6 +83,8 @@ public class UserServiceImpl implements UserService {
         BusinessProfile businessProfile = businessProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
 
+        boolean bankbookInfoChanged = false;
+
         if (request.phoneNumber() != null) {
             user.changePhone(request.phoneNumber());
         }
@@ -91,20 +93,28 @@ public class UserServiceImpl implements UserService {
         }
         if (request.bankName() != null) {
             businessProfile.changeBankName(request.bankName());
+            bankbookInfoChanged = true;
         }
         if (request.bankAccountNumber() != null) {
             businessProfile.changeBankAccountNumber(request.bankAccountNumber());
+            bankbookInfoChanged = true;
         }
         if (request.accountHolder() != null) {
             businessProfile.changeAccountHolder(request.accountHolder());
+            bankbookInfoChanged = true;
         }
         if (bankbookImage != null && !bankbookImage.isEmpty()) {
             businessProfile.changeBankbookImageUrl(
                     s3FileUploadService.uploadBankbookImage(bankbookImage, userId)
             );
+            bankbookInfoChanged = true;
         }
         if (request.taxInvoiceEmail() != null) {
             businessProfile.changeTaxInvoiceEmail(request.taxInvoiceEmail());
+        }
+
+        if (bankbookInfoChanged) {
+            businessProfile.changeBankbookVerified(false);
         }
 
         updateInstagramId(user, request.instagramId());
@@ -300,6 +310,7 @@ public class UserServiceImpl implements UserService {
                 .specialty(request.getSpecialty())
                 .reviewDataAgreement(Boolean.TRUE.equals(request.getReviewDataAgreement()))
                 .businessPhoneNumber(request.getPhoneNumber())
+                .isBankbookVerified(false)
                 .build();
 
         return businessProfileRepository.save(businessProfile);
