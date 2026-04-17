@@ -3,6 +3,7 @@ package app.dearobjet.backend.domain.user.dto;
 public record UpdateBusinessProfileRequest(
         String instagramId,
         String phoneNumber,
+        String email,
         String businessPhoneNumber,
         String bankName,
         String bankAccountNumber,

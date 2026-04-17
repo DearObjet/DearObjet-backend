@@ -77,7 +77,8 @@ public class UserServiceImpl implements UserService {
     public BusinessProfileDetailResponse updateBusinessProfileDetail(
             Long userId,
             UpdateBusinessProfileRequest request,
-            MultipartFile bankbookImage
+            MultipartFile bankbookImage,
+            MultipartFile profileImage
     ) {
         User user = getUser(userId);
         BusinessProfile businessProfile = businessProfileRepository.findByUserId(userId)
@@ -87,6 +88,9 @@ public class UserServiceImpl implements UserService {
 
         if (request.phoneNumber() != null) {
             user.changePhone(request.phoneNumber());
+        }
+        if (request.email() != null) {
+            user.changeEmail(request.email());
         }
         if (request.businessPhoneNumber() != null) {
             businessProfile.changeBusinessPhoneNumber(request.businessPhoneNumber());
@@ -108,6 +112,9 @@ public class UserServiceImpl implements UserService {
                     s3FileUploadService.uploadBankbookImage(bankbookImage, userId)
             );
             bankbookInfoChanged = true;
+        }
+        if (profileImage != null && !profileImage.isEmpty()) {
+            user.changeProfileUrl(s3FileUploadService.uploadProfileImage(profileImage, userId));
         }
         if (request.taxInvoiceEmail() != null) {
             businessProfile.changeTaxInvoiceEmail(request.taxInvoiceEmail());

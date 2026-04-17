@@ -89,6 +89,10 @@ public class User extends BaseTimeEntity {
         this.phoneNumber = phoneNumber;
     }
 
+    public void changeEmail(String email) {
+        this.email = email;
+    }
+
     public void changeProfileUrl(String profileUrl) {
         this.profileUrl = profileUrl;
     }

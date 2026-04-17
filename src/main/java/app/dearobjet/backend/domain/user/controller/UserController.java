@@ -64,10 +64,11 @@ public class UserController {
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestPart("request") UpdateBusinessProfileRequest request,
-            @RequestPart(value = "bankbookImage", required = false) MultipartFile bankbookImage
+            @RequestPart(value = "bankbookImage", required = false) MultipartFile bankbookImage,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) {
         return ResponseEntity.ok(ApiResponse.of(
-                userService.updateBusinessProfileDetail(userDetails.getUserId(), request, bankbookImage)
+                userService.updateBusinessProfileDetail(userDetails.getUserId(), request, bankbookImage, profileImage)
         ));
     }
 

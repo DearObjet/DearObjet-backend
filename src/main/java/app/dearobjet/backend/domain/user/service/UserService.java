@@ -25,7 +25,8 @@ public interface UserService {
     BusinessProfileDetailResponse updateBusinessProfileDetail(
             Long userId,
             UpdateBusinessProfileRequest request,
-            MultipartFile bankbookImage
+            MultipartFile bankbookImage,
+            MultipartFile profileImage
     );
 
     UserProfileResponse updateUserProfile(Long userId, UpdateUserProfileRequest request, MultipartFile profileImage);
