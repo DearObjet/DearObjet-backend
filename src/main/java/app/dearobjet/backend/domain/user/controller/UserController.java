@@ -58,15 +58,16 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.of(userService.getBusinessProfileDetail(userDetails.getUserId())));
     }
 
-    @PatchMapping("/me/business-profile")
+    @PatchMapping(value = "/me/business-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "사업자 개인정보 수정")
     public ResponseEntity<ApiResponse<BusinessProfileDetailResponse>> updateMyBusinessProfile(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody UpdateBusinessProfileRequest request
+            @Valid @RequestPart("request") UpdateBusinessProfileRequest request,
+            @RequestPart(value = "bankbookImage", required = false) MultipartFile bankbookImage
     ) {
         return ResponseEntity.ok(ApiResponse.of(
-                userService.updateBusinessProfileDetail(userDetails.getUserId(), request)
+                userService.updateBusinessProfileDetail(userDetails.getUserId(), request, bankbookImage)
         ));
     }
 

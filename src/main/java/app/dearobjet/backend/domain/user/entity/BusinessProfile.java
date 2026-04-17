@@ -79,6 +79,9 @@ public class BusinessProfile extends BaseTimeEntity {
     @Column(name = "account_holder")
     private String accountHolder;
 
+    @Column(name = "bankbook_image_url")
+    private String bankbookImageUrl;
+
     @Column(name = "tax_invoice_email")
     private String taxInvoiceEmail;
 
@@ -103,6 +106,10 @@ public class BusinessProfile extends BaseTimeEntity {
 
     public void changeAccountHolder(String accountHolder) {
         this.accountHolder = accountHolder;
+    }
+
+    public void changeBankbookImageUrl(String bankbookImageUrl) {
+        this.bankbookImageUrl = bankbookImageUrl;
     }
 
     public void changeTaxInvoiceEmail(String taxInvoiceEmail) {

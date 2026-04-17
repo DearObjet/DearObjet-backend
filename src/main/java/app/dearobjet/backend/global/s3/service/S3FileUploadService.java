@@ -122,6 +122,34 @@ public class S3FileUploadService {
         }
     }
 
+    public String uploadBankbookImage(MultipartFile file, Long userId) {
+        validateFile(file);
+
+        String key = buildBankbookImageKey(userId, file.getOriginalFilename());
+        String contentType = file.getContentType();
+
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
+            return buildPublicUrl(key);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 읽기에 실패했습니다.");
+        } catch (S3Exception e) {
+            String detailMessage = e.awsErrorDetails() == null
+                    ? e.getMessage()
+                    : e.awsErrorDetails().errorCode() + ": " + e.awsErrorDetails().errorMessage();
+            throw new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "S3 업로드 실패 - " + detailMessage
+            );
+        }
+    }
+
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "사업자등록증 파일은 필수입니다.");
@@ -163,6 +191,11 @@ public class S3FileUploadService {
     private String buildProfileImageKey(Long userId, String originalFilename) {
         String extension = extractExtension(originalFilename);
         return "profile-image/" + userId + "/" + UUID.randomUUID() + extension;
+    }
+
+    private String buildBankbookImageKey(Long userId, String originalFilename) {
+        String extension = extractExtension(originalFilename);
+        return "bankbook-image/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
     private String extractExtension(String filename) {

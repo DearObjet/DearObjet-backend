@@ -9,6 +9,7 @@ import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
 import app.dearobjet.backend.domain.user.entity.User;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
 
@@ -21,7 +22,11 @@ public interface UserService {
 
     BusinessProfileDetailResponse getBusinessProfileDetail(Long userId);
 
-    BusinessProfileDetailResponse updateBusinessProfileDetail(Long userId, UpdateBusinessProfileRequest request);
+    BusinessProfileDetailResponse updateBusinessProfileDetail(
+            Long userId,
+            UpdateBusinessProfileRequest request,
+            MultipartFile bankbookImage
+    );
 
     UserProfileResponse updateUserProfile(Long userId, UpdateUserProfileRequest request, MultipartFile profileImage);
 

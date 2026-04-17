@@ -74,7 +74,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public BusinessProfileDetailResponse updateBusinessProfileDetail(Long userId, UpdateBusinessProfileRequest request) {
+    public BusinessProfileDetailResponse updateBusinessProfileDetail(
+            Long userId,
+            UpdateBusinessProfileRequest request,
+            MultipartFile bankbookImage
+    ) {
         User user = getUser(userId);
         BusinessProfile businessProfile = businessProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
@@ -93,6 +97,11 @@ public class UserServiceImpl implements UserService {
         }
         if (request.accountHolder() != null) {
             businessProfile.changeAccountHolder(request.accountHolder());
+        }
+        if (bankbookImage != null && !bankbookImage.isEmpty()) {
+            businessProfile.changeBankbookImageUrl(
+                    s3FileUploadService.uploadBankbookImage(bankbookImage, userId)
+            );
         }
         if (request.taxInvoiceEmail() != null) {
             businessProfile.changeTaxInvoiceEmail(request.taxInvoiceEmail());

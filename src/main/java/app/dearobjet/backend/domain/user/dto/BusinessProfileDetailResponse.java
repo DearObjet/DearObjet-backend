@@ -15,6 +15,7 @@ public record BusinessProfileDetailResponse(
         String bankName,
         String bankAccountNumber,
         String accountHolder,
+        String bankbookImageUrl,
         String taxInvoiceEmail,
         String hometaxApiKey
 ) {
@@ -35,6 +36,7 @@ public record BusinessProfileDetailResponse(
                 businessProfile.getBankName(),
                 businessProfile.getBankAccountNumber(),
                 businessProfile.getAccountHolder(),
+                businessProfile.getBankbookImageUrl(),
                 businessProfile.getTaxInvoiceEmail(),
                 businessProfile.getHometaxApiKey()
         );
