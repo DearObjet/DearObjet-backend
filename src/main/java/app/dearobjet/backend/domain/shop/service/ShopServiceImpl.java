@@ -36,8 +36,7 @@ public class ShopServiceImpl implements ShopService {
 
     @Override
     public ShopBusinessHoursResponse updateBusinessHours(Long userId, UpdateBusinessHoursRequest request) {
-        Shop shop = shopRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
+        Shop shop = findShopByUserId(userId);
 
         Map<DayOfWeek, ShopBusinessHour> existingHours = new EnumMap<>(DayOfWeek.class);
         shopBusinessHourRepository.findAllByShop(shop)
@@ -58,6 +57,12 @@ public class ShopServiceImpl implements ShopService {
 
     @Override
     @Transactional(readOnly = true)
+    public ShopBusinessHoursResponse getMyBusinessHours(Long userId) {
+        return getBusinessHours(findShopByUserId(userId).getShopId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ShopBusinessHoursResponse getBusinessHours(Long shopId) {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
@@ -66,11 +71,12 @@ public class ShopServiceImpl implements ShopService {
         shopBusinessHourRepository.findAllByShop(shop)
                 .forEach(hour -> hoursByDay.put(hour.getDayOfWeek(), hour));
 
-        if (hoursByDay.isEmpty()) {
-            return null;
-        }
-
         return toBusinessHoursResponse(hoursByDay);
+    }
+
+    private Shop findShopByUserId(Long userId) {
+        return shopRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
     }
 
     private void upsertDayHours(
