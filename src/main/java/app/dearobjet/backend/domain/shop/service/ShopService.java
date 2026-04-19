@@ -7,5 +7,7 @@ public interface ShopService {
 
     ShopBusinessHoursResponse updateBusinessHours(Long userId, UpdateBusinessHoursRequest request);
 
+    ShopBusinessHoursResponse getMyBusinessHours(Long userId);
+
     ShopBusinessHoursResponse getBusinessHours(Long shopId);
 }

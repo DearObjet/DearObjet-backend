@@ -42,6 +42,13 @@ public class ShopController {
         return ApiResponse.of(classesService.getClassesByShop(shopId, page, size));
     }
 
+    @GetMapping("/me/business-hours")
+    public ApiResponse<ShopBusinessHoursResponse> getMyBusinessHours(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ApiResponse.of(shopService.getMyBusinessHours(userDetails.getUserId()));
+    }
+
     @PatchMapping("/me/business-hours")
     public ApiResponse<ShopBusinessHoursResponse> updateBusinessHours(
             @AuthenticationPrincipal CustomUserDetails userDetails,
