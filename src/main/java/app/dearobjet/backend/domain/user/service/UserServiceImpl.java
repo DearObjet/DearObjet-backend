@@ -5,12 +5,18 @@ import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.shop.service.ShopCoordinate;
 import app.dearobjet.backend.domain.user.dto.BusinessSignupRequest;
+import app.dearobjet.backend.domain.user.dto.BusinessProfileDetailResponse;
+import app.dearobjet.backend.domain.user.dto.UpdateBusinessProfileRequest;
+import app.dearobjet.backend.domain.user.dto.UpdateUserProfileRequest;
 import app.dearobjet.backend.domain.user.dto.UserInfoResponse;
+import app.dearobjet.backend.domain.user.dto.UserProfileResponse;
 import app.dearobjet.backend.domain.user.dto.UserSignupRequest;
+import app.dearobjet.backend.domain.user.entity.BusinessProfile;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
+import app.dearobjet.backend.domain.user.repository.BusinessProfileRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
@@ -29,6 +35,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
+    private final BusinessProfileRepository businessProfileRepository;
     private final ShopRepository shopRepository;
     private final KakaoLocalClient kakaoLocalClient;
     private final S3FileUploadService s3FileUploadService;
@@ -48,6 +55,106 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserInfoResponse getUserInfo(Long userId) {
         return UserInfoResponse.from(getUser(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(Long userId) {
+        return UserProfileResponse.from(getUser(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BusinessProfileDetailResponse getBusinessProfileDetail(Long userId) {
+        User user = getUser(userId);
+        BusinessProfile businessProfile = businessProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
+
+        return BusinessProfileDetailResponse.from(user, businessProfile, getInstagramId(user));
+    }
+
+    @Override
+    public BusinessProfileDetailResponse updateBusinessProfileDetail(
+            Long userId,
+            UpdateBusinessProfileRequest request,
+            MultipartFile bankbookImage,
+            MultipartFile profileImage
+    ) {
+        User user = getUser(userId);
+        BusinessProfile businessProfile = businessProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
+
+        boolean bankbookInfoChanged = false;
+
+        if (request.phoneNumber() != null) {
+            user.changePhone(request.phoneNumber());
+        }
+        if (request.email() != null) {
+            user.changeEmail(request.email());
+        }
+        if (request.businessPhoneNumber() != null) {
+            businessProfile.changeBusinessPhoneNumber(request.businessPhoneNumber());
+        }
+        if (request.bankName() != null) {
+            businessProfile.changeBankName(request.bankName());
+            bankbookInfoChanged = true;
+        }
+        if (request.bankAccountNumber() != null) {
+            businessProfile.changeBankAccountNumber(request.bankAccountNumber());
+            bankbookInfoChanged = true;
+        }
+        if (request.accountHolder() != null) {
+            businessProfile.changeAccountHolder(request.accountHolder());
+            bankbookInfoChanged = true;
+        }
+        if (bankbookImage != null && !bankbookImage.isEmpty()) {
+            businessProfile.changeBankbookImageUrl(
+                    s3FileUploadService.uploadBankbookImage(bankbookImage, userId)
+            );
+            bankbookInfoChanged = true;
+        }
+        if (profileImage != null && !profileImage.isEmpty()) {
+            user.changeProfileUrl(s3FileUploadService.uploadProfileImage(profileImage, userId));
+        }
+        if (request.taxInvoiceEmail() != null) {
+            businessProfile.changeTaxInvoiceEmail(request.taxInvoiceEmail());
+        }
+
+        if (bankbookInfoChanged) {
+            businessProfile.changeBankbookVerified(false);
+        }
+
+        updateInstagramId(user, request.instagramId());
+
+        return BusinessProfileDetailResponse.from(user, businessProfile, getInstagramId(user));
+    }
+
+    @Override
+    public UserProfileResponse updateUserProfile(
+            Long userId,
+            UpdateUserProfileRequest request,
+            MultipartFile profileImage
+    ) {
+        User user = getUser(userId);
+
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
+            user.changePhone(request.phoneNumber());
+        }
+
+        if (request.name() != null) {
+            user.changeName(request.name());
+        }
+        if (request.smsAgreement() != null) {
+            user.changeSmsAgreement(request.smsAgreement());
+        }
+        if (request.marketingAgreement() != null) {
+            user.changeMarketingAgreement(request.marketingAgreement());
+        }
+        if (profileImage != null && !profileImage.isEmpty()) {
+            user.changeProfileUrl(s3FileUploadService.uploadProfileImage(profileImage, userId));
+        }
+
+        return UserProfileResponse.from(user);
     }
 
     private User createTempUser(String socialId, String email) {
@@ -85,6 +192,7 @@ public class UserServiceImpl implements UserService {
 
         User user = getUser(userId);
         String businessLicenseUrl = s3FileUploadService.uploadBusinessLicense(businessLicenseFile, userId);
+        BusinessProfile businessProfile = createBusinessProfile(user, request, businessLicenseUrl);
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -97,15 +205,8 @@ public class UserServiceImpl implements UserService {
 
         Artist artist = Artist.builder()
                 .user(user)
-                .businessNumber(request.getBusinessNumber())
-                .businessName(request.getBusinessName())
-                .ownerName(request.getOwnerName())
-                .businessAddress(request.getBusinessAddress())
-                .businessLicenseUrl(businessLicenseUrl)
-                .businessType(request.getBusinessType())
-                .businessCategory(request.getBusinessCategory())
-                .specialty(request.getSpecialty())
-                .reviewDataAgreement(Boolean.TRUE.equals(request.getReviewDataAgreement()))
+                .businessProfile(businessProfile)
+                .instagramId(request.getInstagramId())
                 .build();
 
         artistRepository.save(artist);
@@ -119,6 +220,7 @@ public class UserServiceImpl implements UserService {
 
         User user = getUser(userId);
         String businessLicenseUrl = s3FileUploadService.uploadBusinessLicense(businessLicenseFile, userId);
+        BusinessProfile businessProfile = createBusinessProfile(user, request, businessLicenseUrl);
 
         user.completeRegistration(
                 request.getOwnerName(),
@@ -133,17 +235,10 @@ public class UserServiceImpl implements UserService {
 
         Shop shop = Shop.builder()
                 .user(user)
-                .businessNumber(request.getBusinessNumber())
-                .businessName(request.getBusinessName())
-                .ownerName(request.getOwnerName())
-                .businessAddress(request.getBusinessAddress())
+                .businessProfile(businessProfile)
                 .latitude(coordinate == null ? null : coordinate.latitude())
                 .longitude(coordinate == null ? null : coordinate.longitude())
-                .businessLicenseUrl(businessLicenseUrl)
-                .businessType(request.getBusinessType())
-                .businessCategory(request.getBusinessCategory())
-                .specialty(request.getSpecialty())
-                .reviewDataAgreement(Boolean.TRUE.equals(request.getReviewDataAgreement()))
+                .instagramId(request.getInstagramId())
                 .build();
 
         shopRepository.save(shop);
@@ -176,5 +271,55 @@ public class UserServiceImpl implements UserService {
     private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private String getInstagramId(User user) {
+        return switch (user.getRole()) {
+            case ARTIST -> artistRepository.findByUserId(user.getId())
+                    .map(Artist::getInstagramId)
+                    .orElse(null);
+            case SHOP -> shopRepository.findByUser_Id(user.getId())
+                    .map(Shop::getInstagramId)
+                    .orElse(null);
+            default -> null;
+        };
+    }
+
+    private void updateInstagramId(User user, String instagramId) {
+        if (instagramId == null) {
+            return;
+        }
+
+        switch (user.getRole()) {
+            case ARTIST -> artistRepository.findByUserId(user.getId())
+                    .ifPresent(artist -> artist.changeInstagramId(instagramId));
+            case SHOP -> shopRepository.findByUser_Id(user.getId())
+                    .ifPresent(shop -> shop.changeInstagramId(instagramId));
+            default -> {
+            }
+        }
+    }
+
+    private BusinessProfile createBusinessProfile(
+            User user,
+            BusinessSignupRequest request,
+            String businessLicenseUrl
+    ) {
+        BusinessProfile businessProfile = BusinessProfile.builder()
+                .user(user)
+                .businessType(request.getBusinessType())
+                .businessNumber(request.getBusinessNumber())
+                .businessName(request.getBusinessName())
+                .ownerName(request.getOwnerName())
+                .businessAddress(request.getBusinessAddress())
+                .businessLicenseUrl(businessLicenseUrl)
+                .businessCategory(request.getBusinessCategory())
+                .specialty(request.getSpecialty())
+                .reviewDataAgreement(Boolean.TRUE.equals(request.getReviewDataAgreement()))
+                .businessPhoneNumber(request.getPhoneNumber())
+                .isBankbookVerified(false)
+                .build();
+
+        return businessProfileRepository.save(businessProfile);
     }
 }

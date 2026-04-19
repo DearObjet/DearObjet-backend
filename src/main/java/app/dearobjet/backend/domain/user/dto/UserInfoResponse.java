@@ -11,7 +11,7 @@ public class UserInfoResponse {
     private final Long userId;
     private final String email;
     private final String name;
-    private final String profileImage;
+    private final String profileUrl;
     private final Role role;
 
     public static UserInfoResponse from(User user) {
@@ -19,7 +19,7 @@ public class UserInfoResponse {
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getProfileImage(),
+                user.getProfileUrl(),
                 user.getRole()
         );
     }

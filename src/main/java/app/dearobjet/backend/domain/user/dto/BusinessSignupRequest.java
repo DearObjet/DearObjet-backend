@@ -55,6 +55,9 @@ public class BusinessSignupRequest {
     @NotBlank(message = "사업장 주소는 필수입니다.")
     private String businessAddress;
 
+    @Schema(description = "인스타그램 아이디", example = "dearobjet")
+    private String instagramId;
+
     @Schema(description = "업태", example = "SERVICE")
     @NotNull(message = "업태는 필수입니다.")
     private BusinessType businessType;

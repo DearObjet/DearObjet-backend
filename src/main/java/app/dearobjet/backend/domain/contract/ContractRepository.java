@@ -18,9 +18,10 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
     long countPendingApplicationsByShopUserId(@Param("userId") Long userId);
 
     @Query("""
-            select coalesce(nullif(trim(a.businessName), ''), nullif(trim(u.name), ''), 'UNKNOWN')
+            select coalesce(nullif(trim(bp.businessName), ''), nullif(trim(u.name), ''), 'UNKNOWN')
             from ShopArtistContract c
             join c.artist a
+            join a.businessProfile bp
             join a.user u
             where c.shop.user.id = :userId
               and c.contractStatus = 'PENDING'

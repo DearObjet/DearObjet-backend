@@ -30,9 +30,6 @@ public class User extends BaseTimeEntity {
     @Column(name= "phone_number", unique = true)
     private String phoneNumber;
 
-    @Column(name = "profile_image")
-    private String profileImage;
-
     @Column(name = "sms_agreement")
     private Boolean smsAgreement;
 
@@ -76,7 +73,31 @@ public class User extends BaseTimeEntity {
         this.role = role;
     }
 
+    public void changeName(String name) {
+        this.name = name;
+    }
+
+    public void changeSmsAgreement(Boolean smsAgreement) {
+        this.smsAgreement = smsAgreement;
+    }
+
+    public void changeMarketingAgreement(Boolean marketingAgreement) {
+        this.marketingAgreement = marketingAgreement;
+    }
+
     public void changePhone(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public void changeEmail(String email) {
+        this.email = email;
+    }
+
+    public void changeProfileUrl(String profileUrl) {
+        this.profileUrl = profileUrl;
+    }
+
+    public String getProfileImage() {
+        return profileUrl;
     }
 }
