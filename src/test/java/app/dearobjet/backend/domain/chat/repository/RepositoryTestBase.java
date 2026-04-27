@@ -70,7 +70,7 @@ public abstract class RepositoryTestBase {
                 .email(email)
                 .name(name)
                 .phoneNumber(phoneNumber)
-                .role(Role.USER)
+                .role(Role.CUSTOMER)
                 .userStatus(UserStatus.ACTIVE)
                 .build();
         return userRepository.save(user);

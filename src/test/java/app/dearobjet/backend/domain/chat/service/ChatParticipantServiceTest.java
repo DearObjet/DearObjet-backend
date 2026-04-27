@@ -52,7 +52,7 @@ class ChatParticipantServiceTest {
                 .id(USER_ID)
                 .name("Alice")
                 .email("alice@test.com")
-                .role(Role.USER)
+                .role(Role.CUSTOMER)
                 .userStatus(UserStatus.ACTIVE)
                 .build();
 
