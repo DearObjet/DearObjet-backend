@@ -60,7 +60,7 @@ class ChatRoomServiceTest {
                 .id(CURRENT_USER_ID)
                 .name("Alice")
                 .email("alice@test.com")
-                .role(Role.USER)
+                .role(Role.CUSTOMER)
                 .userStatus(UserStatus.ACTIVE)
                 .build();
 
@@ -68,7 +68,7 @@ class ChatRoomServiceTest {
                 .id(PARTNER_ID)
                 .name("Bob")
                 .email("bob@test.com")
-                .role(Role.USER)
+                .role(Role.CUSTOMER)
                 .userStatus(UserStatus.ACTIVE)
                 .build();
     }
