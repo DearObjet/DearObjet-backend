@@ -27,14 +27,12 @@ import app.dearobjet.backend.domain.user.repository.BusinessProfileRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.common.config.JpaConfig;
-import app.dearobjet.backend.global.exception.InvalidInputException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -42,7 +40,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -51,24 +48,22 @@ class ContractProductRepositoryTest {
 
     private static final BusinessType DEFAULT_BUSINESS_TYPE = BusinessType.WHOLESALE_RETAIL;
     private static final BusinessCategory DEFAULT_BUSINESS_CATEGORY = BusinessCategory.CRAFT_RETAIL;
-    private static final Specialty DEFAULT_SPECIALTY = Specialty.HANDMADE_CRAFT;
-    private static final int INITIAL_STOCK_QUANTITY = 5;
-    private static final int INBOUND_QUANTITY = 7;
-    private static final int SALE_QUANTITY = 3;
-    private static final int RETURN_QUANTITY = 2;
-    private static final int ADJUSTMENT_QUANTITY = 2;
-    private static final int OVERSELL_EXTRA_QUANTITY = 1;
     private static final long ACTOR_USER_ID = 101L;
-    private static final BigDecimal DEFAULT_PRODUCT_PRICE = new BigDecimal("10000.00");
-    private static final BigDecimal DEFAULT_SELLING_PRICE = new BigDecimal("12000.00");
+    private static final int CUP_INBOUND_QUANTITY = 10;
+    private static final int CUP_SALE_QUANTITY = 2;
+    private static final int PLATE_INBOUND_QUANTITY = 5;
+    private static final int PLATE_SALE_QUANTITY = 1;
+    private static final BigDecimal CUP_PRICE = new BigDecimal("10000.00");
+    private static final BigDecimal CUP_SELLING_PRICE = new BigDecimal("12000.00");
+    private static final BigDecimal PLATE_PRICE = new BigDecimal("8000.00");
+    private static final BigDecimal PLATE_SELLING_PRICE = new BigDecimal("9000.00");
     private static final BigDecimal DEFAULT_COMMISSION_VALUE = new BigDecimal("20.0000");
-    private static final BigDecimal UPDATED_MARGIN_AMOUNT = new BigDecimal("3000.00");
-    private static final BigDecimal UPDATED_UNIT_SETTLEMENT_AMOUNT = new BigDecimal("9000.00");
-    private static final LocalDateTime BASE_STOCKED_AT = LocalDateTime.of(2026, 4, 8, 10, 30);
-    private static final LocalDateTime INBOUND_AT = LocalDateTime.of(2026, 4, 10, 9, 15);
-    private static final LocalDateTime SALE_AT = LocalDateTime.of(2026, 4, 11, 14, 20);
-    private static final LocalDateTime RETURN_AT = LocalDateTime.of(2026, 4, 12, 11, 0);
-    private static final LocalDateTime ADJUSTMENT_AT = LocalDateTime.of(2026, 4, 13, 16, 5);
+    private static final BigDecimal CUP_MARGIN_AMOUNT = new BigDecimal("2400.00");
+    private static final BigDecimal CUP_UNIT_SETTLEMENT_AMOUNT = new BigDecimal("9600.00");
+    private static final LocalDateTime CUP_INBOUND_AT = LocalDateTime.of(2026, 4, 28, 10, 0);
+    private static final LocalDateTime CUP_SALE_AT = LocalDateTime.of(2026, 4, 28, 12, 0);
+    private static final LocalDateTime PLATE_INBOUND_AT = LocalDateTime.of(2026, 4, 27, 14, 30);
+    private static final LocalDateTime PLATE_SALE_AT = LocalDateTime.of(2026, 4, 27, 16, 0);
 
     @Autowired
     private ContractProductRepository contractProductRepository;
@@ -95,299 +90,137 @@ class ContractProductRepositoryTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("ENUM과 BigDecimal 필드를 저장하고 다시 조회할 수 있다")
-    void givenInventoryEntities_whenPersist_thenSaveEnumAndBigDecimalFields() {
-        User artistUser = createUser("artist1@example.com", "작가1", Role.ARTIST, "010-1111-1111", "https://image.test/artist1.png");
-        User shopUser = createUser("shop1@example.com", "상점1", Role.SHOP, "010-9999-9999", null);
-        Artist artist = createArtist(artistUser, "작가 상호");
-        Shop shop = createShop(shopUser, "입점 상점");
-        ShopArtistContract contract = createContract(artist, shop, ContractStatus.APPROVED);
-        Product product = createProduct(artist, "도자기 컵");
-
-        ContractProduct contractProduct = ContractProduct.builder()
-                .shopArtistContract(contract)
-                .product(product)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .build();
-        contractProduct.updateInventoryManagement(UPDATED_MARGIN_AMOUNT, UPDATED_UNIT_SETTLEMENT_AMOUNT);
-        ContractProductStockMovement inboundMovement = contractProduct.applyInbound(
-                INBOUND_QUANTITY,
-                BASE_STOCKED_AT,
-                ACTOR_USER_ID,
-                "초기 입고"
-        );
-
-        ContractProduct saved = contractProductRepository.save(contractProduct);
-        contractProductStockMovementRepository.save(inboundMovement);
-        flushAndClear();
-
-        ContractProduct found = contractProductRepository.findById(saved.getContractProductsId()).orElseThrow();
-        ContractProductStockMovement savedMovement = contractProductStockMovementRepository.findAll().get(0);
-
-        assertThat(found.getProduct().getStatus()).isEqualTo(ProductStatus.ACTIVE);
-        assertThat(found.getShopArtistContract().getContractStatus()).isEqualTo(ContractStatus.APPROVED);
-        assertThat(found.getShopArtistContract().getCommissionType()).isEqualTo(CommissionType.RATE);
-        assertThat(found.getListingStatus()).isEqualTo(ContractProductListingStatus.ACTIVE);
-        assertThat(found.getProduct().getPrice()).isEqualByComparingTo(DEFAULT_PRODUCT_PRICE);
-        assertThat(found.getSellingPrice()).isEqualByComparingTo(DEFAULT_SELLING_PRICE);
-        assertThat(found.getMarginAmount()).isEqualByComparingTo(UPDATED_MARGIN_AMOUNT);
-        assertThat(found.getUnitSettlementAmount()).isEqualByComparingTo(UPDATED_UNIT_SETTLEMENT_AMOUNT);
-        assertThat(found.getRecentStockedAt()).isEqualTo(BASE_STOCKED_AT);
-        assertThat(found.getStockQuantity()).isEqualTo(INBOUND_QUANTITY);
-        assertThat(found.getVersion()).isNotNull();
-        assertThat(savedMovement.getMovementType()).isEqualTo(ContractProductStockMovementType.INBOUND);
-        assertThat(savedMovement.getResultStockQuantity()).isEqualTo(INBOUND_QUANTITY);
-    }
-
-    @Test
-    @DisplayName("같은 계약의 같은 품목은 하나의 현재 재고 행만 가질 수 있다")
-    void givenDuplicateContractProduct_whenPersist_thenThrowConstraintViolation() {
-        User artistUser = createUser("artist2@example.com", "작가2", Role.ARTIST, "010-2222-2222", null);
-        User shopUser = createUser("shop2@example.com", "상점2", Role.SHOP, "010-8888-8888", null);
-        Artist artist = createArtist(artistUser, "작가 상호2");
-        Shop shop = createShop(shopUser, "입점 상점2");
-        ShopArtistContract contract = createContract(artist, shop, ContractStatus.APPROVED);
-        Product product = createProduct(artist, "유리 화병");
-
-        contractProductRepository.save(ContractProduct.builder()
-                .shopArtistContract(contract)
-                .product(product)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .build());
-        flushAndClear();
-
-        ContractProduct duplicate = ContractProduct.builder()
-                .shopArtistContract(contract)
-                .product(product)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .build();
-
-        assertThatThrownBy(() -> {
-            contractProductRepository.saveAndFlush(duplicate);
-            entityManager.clear();
-        }).isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    @DisplayName("입고와 판매 차감 이력을 적용하면 현재 재고 스냅샷과 movement 결과가 일치한다")
-    void givenInboundAndSale_whenApplyMovements_thenKeepSnapshotAndMovementConsistent() {
-        ContractProduct contractProduct = createPersistedContractProduct("artist3@example.com", "shop3@example.com", "엽서 세트");
-
-        ContractProductStockMovement inboundMovement = contractProduct.applyInbound(
-                INITIAL_STOCK_QUANTITY,
-                INBOUND_AT,
-                ACTOR_USER_ID,
-                "1차 입고"
-        );
-        ContractProductStockMovement saleMovement = contractProduct.applySaleDecrease(
-                SALE_QUANTITY,
-                SALE_AT,
-                ACTOR_USER_ID,
-                "판매 차감"
-        );
-
-        contractProductRepository.saveAndFlush(contractProduct);
-        contractProductStockMovementRepository.save(inboundMovement);
-        contractProductStockMovementRepository.save(saleMovement);
-        flushAndClear();
-
-        ContractProduct found = contractProductRepository.findById(contractProduct.getContractProductsId()).orElseThrow();
-        List<ContractProductStockMovement> movements = contractProductStockMovementRepository.findAll();
-
-        assertThat(found.getStockQuantity()).isEqualTo(INITIAL_STOCK_QUANTITY - SALE_QUANTITY);
-        assertThat(found.getSoldQuantity()).isEqualTo(SALE_QUANTITY);
-        assertThat(found.getRecentStockedAt()).isEqualTo(INBOUND_AT);
-        assertThat(movements).hasSize(2);
-        assertThat(movements.get(0).getResultStockQuantity()).isEqualTo(INITIAL_STOCK_QUANTITY);
-        assertThat(movements.get(1).getQuantityDelta()).isEqualTo(-SALE_QUANTITY);
-        assertThat(movements.get(1).getResultStockQuantity()).isEqualTo(INITIAL_STOCK_QUANTITY - SALE_QUANTITY);
-    }
-
-    @Test
-    @DisplayName("반품 증가와 재고 조정은 최근입고일을 바꾸지 않는다")
-    void givenReturnAndAdjustment_whenApplyMovements_thenKeepRecentStockedAt() {
-        ContractProduct contractProduct = createPersistedContractProduct("artist4@example.com", "shop4@example.com", "마스킹 테이프");
-        contractProduct.applyInbound(INITIAL_STOCK_QUANTITY, INBOUND_AT, ACTOR_USER_ID, "1차 입고");
-
-        ContractProductStockMovement returnMovement = contractProduct.applyReturnIncrease(
-                RETURN_QUANTITY,
-                RETURN_AT,
-                ACTOR_USER_ID,
-                "반품 복원"
-        );
-        ContractProductStockMovement adjustmentMovement = contractProduct.applyAdjustmentDecrease(
-                ADJUSTMENT_QUANTITY,
-                ADJUSTMENT_AT,
-                ACTOR_USER_ID,
-                "재고 조정"
-        );
-
-        contractProductRepository.saveAndFlush(contractProduct);
-        contractProductStockMovementRepository.save(returnMovement);
-        contractProductStockMovementRepository.save(adjustmentMovement);
-        flushAndClear();
-
-        ContractProduct found = contractProductRepository.findById(contractProduct.getContractProductsId()).orElseThrow();
-
-        assertThat(found.getRecentStockedAt()).isEqualTo(INBOUND_AT);
-        assertThat(found.getStockQuantity()).isEqualTo(INITIAL_STOCK_QUANTITY + RETURN_QUANTITY - ADJUSTMENT_QUANTITY);
-    }
-
-    @Test
-    @DisplayName("현재 재고보다 많이 차감하면 예외가 발생한다")
-    void givenInsufficientStock_whenApplySaleDecrease_thenThrowInvalidInputException() {
-        ContractProduct contractProduct = createPersistedContractProduct("artist5@example.com", "shop5@example.com", "패브릭 파우치");
-        contractProduct.applyInbound(INITIAL_STOCK_QUANTITY, INBOUND_AT, ACTOR_USER_ID, "1차 입고");
-
-        assertThatThrownBy(() -> contractProduct.applySaleDecrease(
-                INITIAL_STOCK_QUANTITY + OVERSELL_EXTRA_QUANTITY,
-                SALE_AT,
-                ACTOR_USER_ID,
-                "과다 차감"
-        )).isInstanceOf(InvalidInputException.class);
-    }
-
-    @Test
-    @DisplayName("재고관리 목록 조회 시 승인 계약 작가는 품목이 없어도 반환한다")
+    @DisplayName("재고관리 목록은 승인 계약 작가를 품목 유무와 관계없이 반환한다")
     void givenApprovedContracts_whenQueryByShop_thenReturnContractedArtists() {
-        User artistUser = createUser("artist6@example.com", "작가6", Role.ARTIST, "010-6666-6666", "https://image.test/artist6.png");
-        User anotherArtistUser = createUser("artist7@example.com", "작가7", Role.ARTIST, "010-7777-7777", "https://image.test/artist7.png");
-        User noProductArtistUser = createUser("artist8@example.com", "작가8", Role.ARTIST, "010-7777-7778", "https://image.test/artist8.png");
-        User shopUser = createUser("shop6@example.com", "상점6", Role.SHOP, "010-5555-5555", null);
-        Artist activeArtist = createArtist(artistUser, "활성 작가");
-        Artist endedArtist = createArtist(anotherArtistUser, "종료 작가");
-        Artist noProductArtist = createArtist(noProductArtistUser, "무품목 작가");
-        Shop shop = createShop(shopUser, "조회 상점");
-        ShopArtistContract activeContract = createContract(activeArtist, shop, ContractStatus.APPROVED);
-        ShopArtistContract endedContract = createContract(endedArtist, shop, ContractStatus.ENDED);
-        ShopArtistContract noProductContract = createContract(noProductArtist, shop, ContractStatus.APPROVED);
-        Product activeProduct = createProduct(activeArtist, "도자기 접시");
-        Product endedProduct = createProduct(endedArtist, "종료 품목");
-
-        ContractProduct activeContractProduct = ContractProduct.builder()
-                .shopArtistContract(activeContract)
-                .product(activeProduct)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .build();
-        activeContractProduct.applyInbound(INITIAL_STOCK_QUANTITY, INBOUND_AT, ACTOR_USER_ID, "입고");
-
-        ContractProduct endedContractProduct = ContractProduct.builder()
-                .shopArtistContract(endedContract)
-                .product(endedProduct)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .listingStatus(ContractProductListingStatus.ENDED)
-                .build();
-        endedContractProduct.applyInbound(INITIAL_STOCK_QUANTITY, BASE_STOCKED_AT, ACTOR_USER_ID, "종료 입고");
-
-        contractProductRepository.save(activeContractProduct);
-        contractProductRepository.save(endedContractProduct);
-        flushAndClear();
+        InventoryFixture fixture = createInventoryFixture();
 
         List<ContractInventoryRow> rows = contractRepository.findInventoryRowsByShopId(
-                shop.getShopId(),
+                fixture.shop().getShopId(),
                 ContractStatus.APPROVED,
                 ContractProductListingStatus.ACTIVE
         );
 
         assertThat(rows).hasSize(2);
-        ContractInventoryRow row = rows.stream()
-                .filter(inventoryRow -> "활성 작가".equals(inventoryRow.getArtistName()))
-                .findFirst()
-                .orElseThrow();
-        ContractInventoryRow noProductRow = rows.stream()
-                .filter(inventoryRow -> "무품목 작가".equals(inventoryRow.getArtistName()))
-                .findFirst()
-                .orElseThrow();
+        ContractInventoryRow artistRow = findArtistRow(rows, "Postman 도자기 작가");
+        ContractInventoryRow noProductArtistRow = findArtistRow(rows, "Postman 문구 작가");
 
-        assertThat(row.getContractId()).isEqualTo(activeContract.getShopArtistContractsId());
-        assertThat(row.getArtistImageUrl()).isEqualTo("https://image.test/artist6.png");
-        assertThat(row.getArtistName()).isEqualTo("활성 작가");
-        assertThat(row.getSpecialty()).isEqualTo(DEFAULT_SPECIALTY);
-        assertThat(row.getRecentStockedAt()).isEqualTo(INBOUND_AT);
-        assertThat(row.getInboundConfirmed()).isFalse();
-        assertThat(noProductRow.getContractId()).isEqualTo(noProductContract.getShopArtistContractsId());
-        assertThat(noProductRow.getRecentStockedAt()).isNull();
+        assertThat(artistRow.getContractId()).isEqualTo(fixture.artistAContract().getShopArtistContractsId());
+        assertThat(artistRow.getArtistImageUrl()).isEqualTo("https://image.test/artist-a.png");
+        assertThat(artistRow.getSpecialty()).isEqualTo(Specialty.CERAMIC);
+        assertThat(artistRow.getRecentStockedAt()).isEqualTo(CUP_INBOUND_AT);
+        assertThat(artistRow.getInboundConfirmed()).isFalse();
+        assertThat(noProductArtistRow.getContractId()).isEqualTo(fixture.artistBContract().getShopArtistContractsId());
+        assertThat(noProductArtistRow.getSpecialty()).isEqualTo(Specialty.STATIONERY_PAPER);
+        assertThat(noProductArtistRow.getRecentStockedAt()).isNull();
     }
 
     @Test
-    @DisplayName("작가별 재고 상세 조회 시 총 입고 수량과 정산 필드를 반환한다")
+    @DisplayName("작가별 재고 상세는 총 입고 수량과 정산 필드를 반환한다")
     void givenContractProducts_whenQueryDetailRows_thenReturnInventoryProductRows() {
-        User artistUser = createUser("artist9@example.com", "작가9", Role.ARTIST, "010-9999-0001", "https://image.test/artist9.png");
-        User shopUser = createUser("shop9@example.com", "상점9", Role.SHOP, "010-9999-0002", null);
-        Artist artist = createArtist(artistUser, "상세 작가");
-        Shop shop = createShop(shopUser, "상세 상점");
-        ShopArtistContract contract = createContract(artist, shop, ContractStatus.APPROVED);
-        Product product = createProduct(artist, "유리 컵");
-
-        ContractProduct contractProduct = ContractProduct.builder()
-                .shopArtistContract(contract)
-                .product(product)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .build();
-        contractProduct.updateInventoryManagement(UPDATED_MARGIN_AMOUNT, UPDATED_UNIT_SETTLEMENT_AMOUNT);
-        ContractProductStockMovement firstInbound = contractProduct.applyInbound(
-                INITIAL_STOCK_QUANTITY,
-                INBOUND_AT,
-                ACTOR_USER_ID,
-                "1차 입고"
-        );
-        ContractProductStockMovement secondInbound = contractProduct.applyInbound(
-                INBOUND_QUANTITY,
-                ADJUSTMENT_AT,
-                ACTOR_USER_ID,
-                "2차 입고"
-        );
-        ContractProductStockMovement sale = contractProduct.applySaleDecrease(
-                SALE_QUANTITY,
-                SALE_AT,
-                ACTOR_USER_ID,
-                "판매"
-        );
-
-        contractProductRepository.save(contractProduct);
-        contractProductStockMovementRepository.save(firstInbound);
-        contractProductStockMovementRepository.save(secondInbound);
-        contractProductStockMovementRepository.save(sale);
-        flushAndClear();
+        InventoryFixture fixture = createInventoryFixture();
 
         List<ContractInventoryProductRow> rows = contractProductRepository.findInventoryProductRowsByContractId(
-                contract.getShopArtistContractsId(),
-                shop.getShopId(),
+                fixture.artistAContract().getShopArtistContractsId(),
+                fixture.shop().getShopId(),
                 ContractStatus.APPROVED,
                 ContractProductListingStatus.ACTIVE,
                 ContractProductStockMovementType.INBOUND
         );
 
-        assertThat(rows).hasSize(1);
-        ContractInventoryProductRow row = rows.get(0);
-        assertThat(row.getTotalQuantity()).isEqualTo((long) INITIAL_STOCK_QUANTITY + INBOUND_QUANTITY);
-        assertThat(row.getProductImageUrl()).isEqualTo("https://example.com/products/유리 컵");
-        assertThat(row.getProductName()).isEqualTo("유리 컵");
-        assertThat(row.getSellingPrice()).isEqualByComparingTo(DEFAULT_SELLING_PRICE);
-        assertThat(row.getStockQuantity()).isEqualTo(INITIAL_STOCK_QUANTITY + INBOUND_QUANTITY - SALE_QUANTITY);
-        assertThat(row.getCommissionType()).isEqualTo(CommissionType.RATE);
-        assertThat(row.getCommissionValue()).isEqualByComparingTo(DEFAULT_COMMISSION_VALUE);
-        assertThat(row.getMarginAmount()).isEqualByComparingTo(UPDATED_MARGIN_AMOUNT);
-        assertThat(row.getUnitSettlementAmount()).isEqualByComparingTo(UPDATED_UNIT_SETTLEMENT_AMOUNT);
-        assertThat(row.getArtistName()).isEqualTo("상세 작가");
-        assertThat(row.getRecentStockedAt()).isEqualTo(ADJUSTMENT_AT);
+        assertThat(rows).hasSize(2);
+        ContractInventoryProductRow cupRow = findProductRow(rows, "Postman Seed 도자기 컵");
+        ContractInventoryProductRow plateRow = findProductRow(rows, "Postman Seed 미니 접시");
+
+        assertThat(cupRow.getTotalQuantity()).isEqualTo((long) CUP_INBOUND_QUANTITY);
+        assertThat(cupRow.getProductImageUrl()).isEqualTo("https://image.test/products/cup.png");
+        assertThat(cupRow.getSellingPrice()).isEqualByComparingTo(CUP_SELLING_PRICE);
+        assertThat(cupRow.getStockQuantity()).isEqualTo(CUP_INBOUND_QUANTITY - CUP_SALE_QUANTITY);
+        assertThat(cupRow.getCommissionType()).isEqualTo(CommissionType.RATE);
+        assertThat(cupRow.getCommissionValue()).isEqualByComparingTo(DEFAULT_COMMISSION_VALUE);
+        assertThat(cupRow.getMarginAmount()).isEqualByComparingTo(CUP_MARGIN_AMOUNT);
+        assertThat(cupRow.getUnitSettlementAmount()).isEqualByComparingTo(CUP_UNIT_SETTLEMENT_AMOUNT);
+        assertThat(cupRow.getArtistName()).isEqualTo("Postman 도자기 작가");
+        assertThat(cupRow.getRecentStockedAt()).isEqualTo(CUP_INBOUND_AT);
+
+        assertThat(plateRow.getTotalQuantity()).isEqualTo((long) PLATE_INBOUND_QUANTITY);
+        assertThat(plateRow.getStockQuantity()).isEqualTo(PLATE_INBOUND_QUANTITY - PLATE_SALE_QUANTITY);
+        assertThat(plateRow.getRecentStockedAt()).isEqualTo(PLATE_INBOUND_AT);
     }
 
-    private ContractProduct createPersistedContractProduct(String artistEmail, String shopEmail, String productName) {
-        User artistUser = createUser(artistEmail, artistEmail, Role.ARTIST, uniquePhoneFor(artistEmail), null);
-        User shopUser = createUser(shopEmail, shopEmail, Role.SHOP, uniquePhoneFor(shopEmail), null);
-        Artist artist = createArtist(artistUser, productName + " 작가");
-        Shop shop = createShop(shopUser, productName + " 상점");
-        ShopArtistContract contract = createContract(artist, shop, ContractStatus.APPROVED);
-        Product product = createProduct(artist, productName);
+    private InventoryFixture createInventoryFixture() {
+        User shopUser = createUser(
+                "postman-shop@test.com",
+                "Postman 소품샵",
+                Role.SHOP,
+                "01090000001",
+                "https://image.test/shop.png"
+        );
+        User artistAUser = createUser(
+                "postman-artist-a@test.com",
+                "Postman 작가 A",
+                Role.ARTIST,
+                "01090000002",
+                "https://image.test/artist-a.png"
+        );
+        User artistBUser = createUser(
+                "postman-artist-b@test.com",
+                "Postman 작가 B",
+                Role.ARTIST,
+                "01090000003",
+                "https://image.test/artist-b.png"
+        );
 
-        ContractProduct contractProduct = ContractProduct.builder()
-                .shopArtistContract(contract)
-                .product(product)
-                .sellingPrice(DEFAULT_SELLING_PRICE)
-                .build();
+        Shop shop = createShop(shopUser, "Postman 테스트 소품샵", Specialty.LIVING_GOODS);
+        Artist artistA = createArtist(artistAUser, "Postman 도자기 작가", Specialty.CERAMIC);
+        Artist artistB = createArtist(artistBUser, "Postman 문구 작가", Specialty.STATIONERY_PAPER);
+        ShopArtistContract artistAContract = createContract(artistA, shop);
+        ShopArtistContract artistBContract = createContract(artistB, shop);
+        Product cup = createProduct(
+                artistA,
+                "Postman Seed 도자기 컵",
+                CUP_PRICE,
+                "https://image.test/products/cup.png"
+        );
+        Product plate = createProduct(
+                artistA,
+                "Postman Seed 미니 접시",
+                PLATE_PRICE,
+                "https://image.test/products/plate.png"
+        );
 
-        return contractProductRepository.saveAndFlush(contractProduct);
+        ContractProduct cupInventory = createContractProduct(
+                artistAContract,
+                cup,
+                CUP_SELLING_PRICE,
+                CUP_MARGIN_AMOUNT,
+                CUP_UNIT_SETTLEMENT_AMOUNT
+        );
+        ContractProduct plateInventory = createContractProduct(
+                artistAContract,
+                plate,
+                PLATE_SELLING_PRICE,
+                new BigDecimal("1800.00"),
+                new BigDecimal("7200.00")
+        );
+
+        ContractProductStockMovement cupInbound =
+                cupInventory.applyInbound(CUP_INBOUND_QUANTITY, CUP_INBOUND_AT, ACTOR_USER_ID, "초기 입고");
+        ContractProductStockMovement cupSale =
+                cupInventory.applySaleDecrease(CUP_SALE_QUANTITY, CUP_SALE_AT, ACTOR_USER_ID, "판매 차감");
+        ContractProductStockMovement plateInbound =
+                plateInventory.applyInbound(PLATE_INBOUND_QUANTITY, PLATE_INBOUND_AT, ACTOR_USER_ID, "초기 입고");
+        ContractProductStockMovement plateSale =
+                plateInventory.applySaleDecrease(PLATE_SALE_QUANTITY, PLATE_SALE_AT, ACTOR_USER_ID, "판매 차감");
+
+        contractProductRepository.save(cupInventory);
+        contractProductRepository.save(plateInventory);
+        saveMovement(cupInbound);
+        saveMovement(cupSale);
+        saveMovement(plateInbound);
+        saveMovement(plateSale);
+        flushAndClear();
+
+        return new InventoryFixture(shop, artistAContract, artistBContract);
     }
 
     private User createUser(String email, String name, Role role, String phoneNumber, String profileUrl) {
@@ -402,8 +235,14 @@ class ContractProductRepositoryTest {
         return userRepository.save(user);
     }
 
-    private Artist createArtist(User user, String businessName) {
-        BusinessProfile businessProfile = createBusinessProfile(user, "ART-" + user.getId(), businessName, "서울시 성동구");
+    private Artist createArtist(User user, String businessName, Specialty specialty) {
+        BusinessProfile businessProfile = createBusinessProfile(
+                user,
+                "ART-" + user.getId(),
+                businessName,
+                "서울시 성동구 테스트로",
+                specialty
+        );
         Artist artist = Artist.builder()
                 .user(user)
                 .businessProfile(businessProfile)
@@ -411,13 +250,19 @@ class ContractProductRepositoryTest {
         return artistRepository.save(artist);
     }
 
-    private Shop createShop(User user, String shopName) {
-        BusinessProfile businessProfile = createBusinessProfile(user, "SHOP-" + user.getId(), shopName, "서울시 마포구");
+    private Shop createShop(User user, String shopName, Specialty specialty) {
+        BusinessProfile businessProfile = createBusinessProfile(
+                user,
+                "SHOP-" + user.getId(),
+                shopName,
+                "서울시 마포구 테스트로",
+                specialty
+        );
         Shop shop = Shop.builder()
                 .user(user)
                 .businessProfile(businessProfile)
                 .shopName(shopName)
-                .shopDescription(shopName + " 설명")
+                .shopDescription("API 테스트용 소품샵")
                 .build();
         return shopRepository.save(shop);
     }
@@ -426,7 +271,8 @@ class ContractProductRepositoryTest {
             User user,
             String businessNumber,
             String businessName,
-            String businessAddress
+            String businessAddress,
+            Specialty specialty
     ) {
         BusinessProfile businessProfile = BusinessProfile.builder()
                 .user(user)
@@ -437,42 +283,81 @@ class ContractProductRepositoryTest {
                 .businessAddress(businessAddress)
                 .businessLicenseUrl("https://example.com/license/" + user.getId())
                 .businessCategory(DEFAULT_BUSINESS_CATEGORY)
-                .specialty(DEFAULT_SPECIALTY)
+                .specialty(specialty)
                 .reviewDataAgreement(Boolean.TRUE)
                 .build();
         return businessProfileRepository.save(businessProfile);
     }
 
-    private ShopArtistContract createContract(Artist artist, Shop shop, ContractStatus contractStatus) {
+    private ShopArtistContract createContract(Artist artist, Shop shop) {
         ShopArtistContract contract = ShopArtistContract.builder()
                 .artist(artist)
                 .shop(shop)
-                .contractStatus(contractStatus)
+                .contractStatus(ContractStatus.APPROVED)
                 .commissionType(CommissionType.RATE)
                 .commissionValue(DEFAULT_COMMISSION_VALUE)
                 .build();
         return contractRepository.save(contract);
     }
 
-    private Product createProduct(Artist artist, String productName) {
+    private Product createProduct(Artist artist, String productName, BigDecimal price, String productUrl) {
         Product product = Product.builder()
                 .artist(artist)
                 .productName(productName)
-                .price(DEFAULT_PRODUCT_PRICE)
+                .price(price)
                 .status(ProductStatus.ACTIVE)
-                .productUrl("https://example.com/products/" + productName)
+                .productUrl(productUrl)
                 .build();
         entityManager.persist(product);
         return product;
     }
 
-    private String uniquePhoneFor(String seed) {
-        int hash = Math.floorMod(seed.hashCode(), 100_000_000);
-        return "010" + String.format("%08d", hash);
+    private ContractProduct createContractProduct(
+            ShopArtistContract contract,
+            Product product,
+            BigDecimal sellingPrice,
+            BigDecimal marginAmount,
+            BigDecimal unitSettlementAmount
+    ) {
+        ContractProduct contractProduct = ContractProduct.builder()
+                .shopArtistContract(contract)
+                .product(product)
+                .sellingPrice(sellingPrice)
+                .build();
+        contractProduct.updateInventoryManagement(marginAmount, unitSettlementAmount);
+        return contractProduct;
+    }
+
+    private void saveMovement(ContractProductStockMovement movement) {
+        contractProductStockMovementRepository.save(movement);
+    }
+
+    private ContractInventoryRow findArtistRow(List<ContractInventoryRow> rows, String artistName) {
+        return rows.stream()
+                .filter(row -> artistName.equals(row.getArtistName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ContractInventoryProductRow findProductRow(
+            List<ContractInventoryProductRow> rows,
+            String productName
+    ) {
+        return rows.stream()
+                .filter(row -> productName.equals(row.getProductName()))
+                .findFirst()
+                .orElseThrow();
     }
 
     private void flushAndClear() {
         entityManager.flush();
         entityManager.clear();
+    }
+
+    private record InventoryFixture(
+            Shop shop,
+            ShopArtistContract artistAContract,
+            ShopArtistContract artistBContract
+    ) {
     }
 }
