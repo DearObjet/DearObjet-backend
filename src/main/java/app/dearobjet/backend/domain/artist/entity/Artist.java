@@ -30,21 +30,6 @@ public class Artist extends BaseTimeEntity {
     @Column(name = "instagram_id")
     private String instagramId;
 
-    @Column(columnDefinition = "TEXT")
-    private String bio;
-
-    @Column(name = "portfolio_url")
-    private String portfolioUrl;
-
-    // 비즈니스 메서드
-    public void updateProfile(String businessName, String bio, String portfolioUrl) {
-        if (businessName != null && businessProfile != null) {
-            businessProfile.changeBusinessName(businessName);
-        }
-        this.bio = bio;
-        this.portfolioUrl = portfolioUrl;
-    }
-
     public void changeInstagramId(String instagramId) {
         this.instagramId = instagramId;
     }
