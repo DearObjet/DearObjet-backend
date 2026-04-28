@@ -1,10 +1,16 @@
 package app.dearobjet.backend.domain.shop.entity;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.shop.enums.ProductStatus;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
+/**
+ * 작가의 품목 관리 엔티티
+ */
 @Entity
 @Table(name = "products")
 @Getter
@@ -25,15 +31,13 @@ public class Product extends BaseTimeEntity {
     @Column(name = "product_name")
     private String productName;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal price;
 
-    private Double price;
-
-    private String status;
-
-    @Column(name = "available_quantity")
-    private Integer availableQuantity;
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ProductStatus status = ProductStatus.ACTIVE;
 
     @Column(name = "product_url")
     private String productUrl;

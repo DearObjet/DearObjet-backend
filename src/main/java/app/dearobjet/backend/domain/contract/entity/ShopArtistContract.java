@@ -1,13 +1,20 @@
 package app.dearobjet.backend.domain.contract.entity;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
+import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.exception.InvalidInputException;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 /**
- * 샵-작가 계약 엔티티
+ * 샵-작가 사이의 입점 계약 엔티티
  */
 @Entity
 @Table(name = "shop_artist_contracts")
@@ -30,30 +37,52 @@ public class ShopArtistContract extends BaseTimeEntity {
     @JoinColumn(name = "shop_id")
     private Shop shop;
 
-    @Column(name = "contract_status")
-    private String contractStatus;
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "contract_status", nullable = false, length = 20)
+    private ContractStatus contractStatus = ContractStatus.PENDING;
 
-    @Column(name = "applied_at")
-    private java.time.LocalDateTime appliedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "commission_type", length = 20)
+    private CommissionType commissionType;
 
-    @Column(name = "approved_at")
-    private java.time.LocalDateTime approvedAt;
+    @Column(name = "commission_value", precision = 19, scale = 4)
+    private BigDecimal commissionValue;
 
-    @Column(name = "ended_at")
-    private java.time.LocalDateTime endedAt;
+    @Builder.Default
+    @Column(name = "memo", columnDefinition = "TEXT")
+    private String memo = "";
 
-    @Column(name = "reject_reason")
-    private String rejectReason;
+    @Builder.Default
+    @Column(name = "recent_inbound_confirmed")
+    private Boolean recentInboundConfirmed = false;
 
-    @Column(name = "last_modified_at")
-    private java.time.LocalDateTime lastModifiedAt;
+    @Column(name = "recent_inbound_confirmed_at")
+    private LocalDateTime recentInboundConfirmedAt;
 
-    @Column(name = "commission_type")
-    private String commissionType;
+    @Column(name = "recent_inbound_confirmed_by_user_id")
+    private Long recentInboundConfirmedByUserId;
 
-    @Column(name = "commission_value")
-    private Double commissionValue;
+    public void updateMemo(String memo) {
+        this.memo = memo == null ? "" : memo;
+    }
 
-    @Column(name = "contract_url")
-    private String contractUrl;
+    public void markRecentInboundPending() {
+        this.recentInboundConfirmed = false;
+        this.recentInboundConfirmedAt = null;
+        this.recentInboundConfirmedByUserId = null;
+    }
+
+    public void confirmRecentInbound(Long confirmedByUserId, LocalDateTime confirmedAt) {
+        if (confirmedByUserId == null) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "입고확인 사용자 ID는 필수입니다.");
+        }
+        if (confirmedAt == null) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "입고확인 시각은 필수입니다.");
+        }
+
+        this.recentInboundConfirmed = true;
+        this.recentInboundConfirmedAt = confirmedAt;
+        this.recentInboundConfirmedByUserId = confirmedByUserId;
+    }
 }
