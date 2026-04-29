@@ -7,6 +7,7 @@ import app.dearobjet.backend.global.sms.dto.SmsVerifyRequest;
 import app.dearobjet.backend.global.sms.dto.SmsVerifyResponse;
 import app.dearobjet.backend.global.sms.policy.SmsPolicy;
 import app.dearobjet.backend.global.sms.service.SmsAuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +22,7 @@ public class SmsController {
     private final SmsAuthService smsAuthService;
 
     @PostMapping("/send")
-    public ApiResponse<SmsSendResponse> sendSms(@RequestBody SmsSendRequest request) {
+    public ApiResponse<SmsSendResponse> sendSms(@Valid @RequestBody SmsSendRequest request) {
 
         smsAuthService.sendVerificationCode(request.getPhoneNumber());
 
@@ -34,7 +35,7 @@ public class SmsController {
     }
 
     @PostMapping("/verify")
-    public ApiResponse<SmsVerifyResponse> verify(@RequestBody SmsVerifyRequest request) {
+    public ApiResponse<SmsVerifyResponse> verify(@Valid @RequestBody SmsVerifyRequest request) {
 
         smsAuthService.verifyCode(
                 request.getPhoneNumber(),
