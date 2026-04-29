@@ -15,18 +15,18 @@ public class SmsAuthService {
     public void sendVerificationCode(String phone) {
 
         if (redisService.isCooldown(phone)) {
-            throw new IllegalStateException("잠시 후 다시 요청하세요");
+            throw new IllegalStateException("잠시 후 다시 요청해주세요.");
         }
 
         String code = VerificationCodeGenerator.generate();
-
-        redisService.saveCode(phone, code);
-        redisService.applyCooldown(phone);
 
         smsService.sendSms(
                 phone,
                 "인증번호는 " + code + " 입니다. (3분 이내 입력)"
         );
+
+        redisService.saveCode(phone, code);
+        redisService.applyCooldown(phone);
     }
 
     public void verifyCode(String phone, String inputCode) {
@@ -34,40 +34,31 @@ public class SmsAuthService {
         String savedCode = redisService.getCode(phone);
 
         if (savedCode == null) {
-            throw new IllegalStateException("인증번호가 만료되었거나 요청되지 않았습니다");
+            throw new IllegalStateException("인증번호가 만료되었거나 요청되지 않았습니다.");
         }
 
         int attempt = redisService.increaseAttempt(phone);
 
         if (attempt > SmsPolicy.MAX_ATTEMPT) {
             redisService.deleteCode(phone);
-            throw new IllegalStateException("인증 시도 횟수를 초과했습니다");
+            throw new IllegalStateException("인증 시도 횟수를 초과했습니다.");
         }
 
         if (!savedCode.equals(inputCode)) {
-            throw new IllegalArgumentException("인증번호가 일치하지 않습니다");
+            throw new IllegalArgumentException("인증번호가 일치하지 않습니다.");
         }
 
         redisService.markVerified(phone);
-
         redisService.deleteCode(phone);
     }
 
-    /**
-     * 민감 기능 전에 호출
-     */
     public void assertVerified(String phone) {
         if (!redisService.isVerified(phone)) {
-            throw new IllegalStateException("휴대폰 인증이 필요합니다");
+            throw new IllegalStateException("휴대폰 인증이 필요합니다.");
         }
     }
 
-    /**
-     * 사용 후 재사용 방지
-     */
     public void consumeVerified(String phone) {
         redisService.clearVerified(phone);
     }
 }
-
-
