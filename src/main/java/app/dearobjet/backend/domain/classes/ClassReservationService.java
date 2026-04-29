@@ -107,6 +107,18 @@ public class ClassReservationService {
     }
 
     @Transactional
+    public void confirmReservation(Long userId, Long reservationId) {
+        ClassReservation reservation = getOwnedReservation(userId, reservationId);
+        reservation.confirm();
+    }
+
+    @Transactional
+    public void cancelReservation(Long userId, Long reservationId) {
+        ClassReservation reservation = getOwnedReservation(userId, reservationId);
+        reservation.cancel();
+    }
+
+    @Transactional
     public AvailableClassSlotsResponse getAvailableSlots(Long classId, LocalDate date) {
         if (date == null) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT, "예약 날짜는 필수입니다.");
@@ -271,6 +283,12 @@ public class ClassReservationService {
     private void validateShopOwner(Long userId) {
         shopRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
+    }
+
+    private ClassReservation getOwnedReservation(Long userId, Long reservationId) {
+        validateShopOwner(userId);
+        return classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(reservationId, userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약을 찾을 수 없습니다."));
     }
 
     private ClassReservationListResponse.Item toReservationListItem(ClassReservation reservation) {

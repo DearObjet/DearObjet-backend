@@ -2,6 +2,8 @@ package app.dearobjet.backend.domain.classes;
 
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
+import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.exception.InvalidInputException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -60,4 +62,19 @@ public class  ClassReservation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
     private ClassSession classSession;
+
+    public void confirm() {
+        updateReservationStatus(ClassReservationStatus.CONFIRMED);
+    }
+
+    public void cancel() {
+        updateReservationStatus(ClassReservationStatus.CANCELED);
+    }
+
+    private void updateReservationStatus(ClassReservationStatus targetStatus) {
+        if (reservationStatus != ClassReservationStatus.PENDING) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "PENDING 상태의 예약만 처리할 수 있습니다.");
+        }
+        this.reservationStatus = targetStatus;
+    }
 }

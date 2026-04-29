@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,6 +44,24 @@ public class ClassReservationController {
             @Valid @RequestBody CreateClassReservationRequest request
     ) {
         return ApiResponse.of(classReservationService.createReservation(userDetails.getUserId(), request));
+    }
+
+    @PatchMapping("/class-reservations/{reservationId}/confirm")
+    public ApiResponse<Void> confirmReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId
+    ) {
+        classReservationService.confirmReservation(userDetails.getUserId(), reservationId);
+        return ApiResponse.of(null);
+    }
+
+    @PatchMapping("/class-reservations/{reservationId}/cancel")
+    public ApiResponse<Void> cancelReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId
+    ) {
+        classReservationService.cancelReservation(userDetails.getUserId(), reservationId);
+        return ApiResponse.of(null);
     }
 
     @GetMapping("/classes/{classId}/available-slots")

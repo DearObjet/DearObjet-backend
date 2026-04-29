@@ -357,6 +357,74 @@ class ClassReservationServiceTest {
     }
 
     @Test
+    void confirmReservation_updatesPendingReservationToConfirmed() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+        ClassReservation reservation = ClassReservation.builder()
+                .reservationId(101L)
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(101L, 7L))
+                .willReturn(Optional.of(reservation));
+
+        classReservationService.confirmReservation(7L, 101L);
+
+        assertThat(reservation.getReservationStatus()).isEqualTo(ClassReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void cancelReservation_updatesPendingReservationToCanceled() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+        ClassReservation reservation = ClassReservation.builder()
+                .reservationId(102L)
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(102L, 7L))
+                .willReturn(Optional.of(reservation));
+
+        classReservationService.cancelReservation(7L, 102L);
+
+        assertThat(reservation.getReservationStatus()).isEqualTo(ClassReservationStatus.CANCELED);
+    }
+
+    @Test
+    void confirmReservation_throwsWhenReservationAlreadyProcessed() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+        ClassReservation reservation = ClassReservation.builder()
+                .reservationId(103L)
+                .reservationStatus(ClassReservationStatus.CONFIRMED)
+                .build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(103L, 7L))
+                .willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> classReservationService.confirmReservation(7L, 103L))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessage("PENDING 상태의 예약만 처리할 수 있습니다.");
+    }
+
+    @Test
+    void cancelReservation_throwsWhenReservationMissing() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(999L, 7L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> classReservationService.cancelReservation(7L, 999L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("예약을 찾을 수 없습니다.");
+    }
+
+    @Test
     void createReservation_throwsWhenCapacityExceeded() {
         LocalDate date = LocalDate.now().plusDays(1);
         Shop shop = Shop.builder().shopId(1L).build();
