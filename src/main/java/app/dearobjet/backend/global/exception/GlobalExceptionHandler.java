@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -87,6 +88,19 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.of(response));
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    protected ResponseEntity<ApiResponse<ErrorResponse>> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException e) {
+        log.warn("MaxUploadSizeExceededException: {}", e.getMessage());
+        ErrorResponse response = ErrorResponse.of(
+                ErrorCode.INVALID_INPUT,
+                "업로드 가능한 요청 크기를 초과했습니다."
+        );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.of(response));
+    }
+
     /**
      * 그 외 모든 예외 처리
      */
@@ -98,7 +112,6 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.of(response));
     }
-
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     protected ResponseEntity<ApiResponse<ErrorResponse>> handleDataIntegrityViolation(
