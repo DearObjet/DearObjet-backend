@@ -36,4 +36,13 @@ public class Notice {
 
     @Column(nullable = false)
     private OffsetDateTime publishedAt;
+
+    public void update(NoticeUpdateRequest request) {
+        if (request.getTarget() != null) this.target = request.getTarget();
+        if (request.getCategory() != null) this.category = request.getCategory();
+        if (request.getBadge() != null) this.badge = request.getBadge();
+        if (request.getTitle() != null) this.title = request.getTitle();
+        if (request.getBody() != null) this.body = request.getBody();
+        if (request.getPublishedAt() != null) this.publishedAt = request.getPublishedAt();
+    }
 }
