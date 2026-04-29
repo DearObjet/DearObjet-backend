@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
+import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
 import app.dearobjet.backend.domain.shop.entity.Shop;
@@ -16,6 +17,7 @@ import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.InvalidInputException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -47,6 +49,87 @@ class ClassReservationServiceTest {
 
     @InjectMocks
     private ClassReservationService classReservationService;
+
+    @Test
+    void getReservations_returnsMonthlyReservations() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+        User user = User.builder().id(1L).name("회원명").phoneNumber("010-1234-5678").build();
+        Classes potteryClass = Classes.builder()
+                .classesId(10L)
+                .className("도자기 클래스")
+                .shop(shop)
+                .build();
+        Classes drawingClass = Classes.builder()
+                .classesId(11L)
+                .className("드로잉 클래스")
+                .shop(shop)
+                .build();
+        ClassReservation firstReservation = ClassReservation.builder()
+                .reservationId(101L)
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .reservationName("최재호")
+                .user(user)
+                .classes(potteryClass)
+                .guestCount(2)
+                .memo("창가 자리")
+                .reservationTime(LocalDateTime.of(2026, 4, 10, 11, 0))
+                .build();
+        ClassReservation secondReservation = ClassReservation.builder()
+                .reservationId(102L)
+                .reservationStatus(ClassReservationStatus.CONFIRMED)
+                .reservationName("김하나")
+                .user(user)
+                .classes(drawingClass)
+                .guestCount(1)
+                .memo(null)
+                .reservationTime(LocalDateTime.of(2026, 4, 28, 14, 0))
+                .build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+        given(classReservationRepository
+                .findByClasses_Shop_User_IdAndReservationTimeGreaterThanEqualAndReservationTimeLessThanOrderByReservationTimeAscReservationIdAsc(
+                        7L,
+                        LocalDateTime.of(2026, 4, 1, 0, 0),
+                        LocalDateTime.of(2026, 5, 1, 0, 0)
+                ))
+                .willReturn(List.of(firstReservation, secondReservation));
+
+        ClassReservationListResponse response = classReservationService.getReservations(7L, 2026, 4);
+
+        assertThat(response.getReservationCount()).isEqualTo(2);
+        assertThat(response.getReservations()).hasSize(2);
+        assertThat(response.getReservations().get(0).getStatus()).isEqualTo("PENDING");
+        assertThat(response.getReservations().get(0).getReservationName()).isEqualTo("최재호");
+        assertThat(response.getReservations().get(0).getPhoneNumber()).isEqualTo("010-1234-5678");
+        assertThat(response.getReservations().get(0).getReservationId()).isEqualTo(101L);
+        assertThat(response.getReservations().get(0).getReservationTime())
+                .isEqualTo(LocalDateTime.of(2026, 4, 10, 11, 0));
+        assertThat(response.getReservations().get(0).getClassName()).isEqualTo("도자기 클래스");
+        assertThat(response.getReservations().get(0).getGuestCount()).isEqualTo(2);
+        assertThat(response.getReservations().get(0).getMemo()).isEqualTo("창가 자리");
+    }
+
+    @Test
+    void getReservations_throwsWhenYearMonthInvalid() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+
+        assertThatThrownBy(() -> classReservationService.getReservations(7L, 2026, 13))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessage("year/month 값이 올바르지 않습니다.");
+    }
+
+    @Test
+    void getReservations_throwsWhenShopMissing() {
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> classReservationService.getReservations(7L, 2026, 4))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("상점을 찾을 수 없습니다.");
+    }
 
     @Test
     void getAvailableSlots_returnsHourlySlotsExcludingFullReservations() {

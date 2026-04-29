@@ -29,12 +29,11 @@ public class ClassReservationController {
     @GetMapping("/class-reservations")
     public ApiResponse<ClassReservationListResponse> getReservations(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam int year,
+            @RequestParam int month
     ) {
         return ApiResponse.of(
-                classReservationService.getReservations(userDetails.getUserId(), status, page, size)
+                classReservationService.getReservations(userDetails.getUserId(), year, month)
         );
     }
 

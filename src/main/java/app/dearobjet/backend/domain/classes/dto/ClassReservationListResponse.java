@@ -10,18 +10,18 @@ import java.util.List;
 @AllArgsConstructor
 public class ClassReservationListResponse {
     private final long reservationCount;
-    private final List<Item> items;
-    private final int page;
-    private final int totalPages;
+    private final List<Item> reservations;
 
     @Getter
     @AllArgsConstructor
     public static class Item {
         private final String status;
-        private final String reserverName;
+        private final String reservationName;
         private final String phoneNumber;
-        private final Long reservationNumber;
-        private final LocalDateTime usageDateTime;
+        private final Long reservationId;
+        private final LocalDateTime reservationTime;
         private final String className;
+        private final Integer guestCount;
+        private final String memo;
     }
 }

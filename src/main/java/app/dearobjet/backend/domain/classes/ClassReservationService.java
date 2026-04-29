@@ -12,15 +12,13 @@ import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.exception.InvalidInputException;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,43 +41,26 @@ public class ClassReservationService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public ClassReservationListResponse getReservations(Long userId, String status, int page, int size) {
-        shopRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Shop not found for user: " + userId));
+    public ClassReservationListResponse getReservations(Long userId, int year, int month) {
+        validateShopOwner(userId);
 
-        Pageable pageable = PageRequest.of(
-                Math.max(page - 1, 0),
-                size,
-                Sort.by(Sort.Direction.DESC, "reservationId")
-        );
+        YearMonth yearMonth = parseYearMonth(year, month);
+        LocalDateTime start = yearMonth.atDay(1).atStartOfDay();
+        LocalDateTime end = yearMonth.plusMonths(1).atDay(1).atStartOfDay();
 
-        ClassReservationStatus reservationStatus = parseReservationStatus(status);
-        Page<ClassReservation> reservationPage = (status == null || status.isBlank())
-                ? classReservationRepository.findByClasses_Shop_User_Id(userId, pageable)
-                : classReservationRepository.findByClasses_Shop_User_IdAndReservationStatus(
-                userId,
-                reservationStatus,
-                pageable
-        );
+        List<ClassReservation> reservations = classReservationRepository
+                .findByClasses_Shop_User_IdAndReservationTimeGreaterThanEqualAndReservationTimeLessThanOrderByReservationTimeAscReservationIdAsc(
+                        userId,
+                        start,
+                        end
+                );
 
-        List<ClassReservationListResponse.Item> items = new ArrayList<>();
-        for (ClassReservation reservation : reservationPage.getContent()) {
-            items.add(new ClassReservationListResponse.Item(
-                    reservation.getReservationStatus() == null ? null : reservation.getReservationStatus().name(),
-                    reservation.getUser() == null ? null : reservation.getUser().getName(),
-                    reservation.getUser() == null ? null : reservation.getUser().getPhoneNumber(),
-                    reservation.getReservationId(),
-                    reservation.getReservationTime(),
-                    reservation.getClasses() == null ? null : reservation.getClasses().getClassName()
-            ));
+        List<ClassReservationListResponse.Item> reservationItems = new ArrayList<>();
+        for (ClassReservation reservation : reservations) {
+            reservationItems.add(toReservationListItem(reservation));
         }
 
-        return new ClassReservationListResponse(
-                reservationPage.getTotalElements(),
-                items,
-                page,
-                reservationPage.getTotalPages()
-        );
+        return new ClassReservationListResponse(reservations.size(), reservationItems);
     }
 
     @Transactional
@@ -201,12 +182,13 @@ public class ClassReservationService {
     }
 
     private List<ClassSession> syncSessions(Classes classes, LocalDate date, int openMinutes, int closeMinutes) {
-        List<ClassSession> existingSessions = classSessionRepository
-                .findByClasses_ClassesIdAndStartDatetimeBetweenOrderByStartDatetimeAsc(
+        List<ClassSession> existingSessions = new ArrayList<>(
+                classSessionRepository.findByClasses_ClassesIdAndStartDatetimeBetweenOrderByStartDatetimeAsc(
                         classes.getClassesId(),
                         date.atStartOfDay(),
                         date.plusDays(1).atStartOfDay().minusNanos(1)
-                );
+                )
+        );
 
         Map<LocalDateTime, ClassSession> existingByStartTime = new HashMap<>();
         for (ClassSession existingSession : existingSessions) {
@@ -242,7 +224,6 @@ public class ClassReservationService {
         }
 
         if (!newSessions.isEmpty()) {
-            existingSessions = new ArrayList<>(existingSessions);
             existingSessions.addAll(classSessionRepository.saveAll(newSessions));
         }
 
@@ -279,16 +260,30 @@ public class ClassReservationService {
         }
     }
 
-    private ClassReservationStatus parseReservationStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return null;
-        }
-
+    private YearMonth parseYearMonth(int year, int month) {
         try {
-            return ClassReservationStatus.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "예약 상태는 PENDING, CONFIRMED, CANCELED 중 하나여야 합니다.");
+            return YearMonth.of(year, month);
+        } catch (DateTimeException exception) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "year/month 값이 올바르지 않습니다.");
         }
+    }
+
+    private void validateShopOwner(Long userId) {
+        shopRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
+    }
+
+    private ClassReservationListResponse.Item toReservationListItem(ClassReservation reservation) {
+        return new ClassReservationListResponse.Item(
+                reservation.getReservationStatus() == null ? null : reservation.getReservationStatus().name(),
+                reservation.getReservationName(),
+                reservation.getUser() == null ? null : reservation.getUser().getPhoneNumber(),
+                reservation.getReservationId(),
+                reservation.getReservationTime(),
+                reservation.getClasses() == null ? null : reservation.getClasses().getClassName(),
+                reservation.getGuestCount(),
+                reservation.getMemo()
+        );
     }
 
     private String formatMinutes(int minutes) {
