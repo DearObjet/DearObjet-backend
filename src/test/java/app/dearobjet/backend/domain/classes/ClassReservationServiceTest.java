@@ -16,6 +16,7 @@ import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.InvalidInputException;
+import app.dearobjet.backend.global.exception.UnauthorizedException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -363,10 +364,11 @@ class ClassReservationServiceTest {
         ClassReservation reservation = ClassReservation.builder()
                 .reservationId(101L)
                 .reservationStatus(ClassReservationStatus.PENDING)
+                .classes(Classes.builder().classesId(10L).shop(shop).build())
                 .build();
 
         given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
-        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(101L, 7L))
+        given(classReservationRepository.findById(101L))
                 .willReturn(Optional.of(reservation));
 
         classReservationService.confirmReservation(7L, 101L);
@@ -381,10 +383,11 @@ class ClassReservationServiceTest {
         ClassReservation reservation = ClassReservation.builder()
                 .reservationId(102L)
                 .reservationStatus(ClassReservationStatus.PENDING)
+                .classes(Classes.builder().classesId(11L).shop(shop).build())
                 .build();
 
         given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
-        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(102L, 7L))
+        given(classReservationRepository.findById(102L))
                 .willReturn(Optional.of(reservation));
 
         classReservationService.cancelReservation(7L, 102L);
@@ -399,10 +402,11 @@ class ClassReservationServiceTest {
         ClassReservation reservation = ClassReservation.builder()
                 .reservationId(103L)
                 .reservationStatus(ClassReservationStatus.CONFIRMED)
+                .classes(Classes.builder().classesId(12L).shop(shop).build())
                 .build();
 
         given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
-        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(103L, 7L))
+        given(classReservationRepository.findById(103L))
                 .willReturn(Optional.of(reservation));
 
         assertThatThrownBy(() -> classReservationService.confirmReservation(7L, 103L))
@@ -411,12 +415,33 @@ class ClassReservationServiceTest {
     }
 
     @Test
+    void confirmReservation_throwsWhenReservationBelongsToAnotherShop() {
+        User owner = User.builder().id(7L).name("운영자").build();
+        User otherOwner = User.builder().id(8L).name("다른운영자").build();
+        Shop shop = Shop.builder().shopId(1L).user(owner).build();
+        Shop otherShop = Shop.builder().shopId(2L).user(otherOwner).build();
+        ClassReservation reservation = ClassReservation.builder()
+                .reservationId(104L)
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .classes(Classes.builder().classesId(13L).shop(otherShop).build())
+                .build();
+
+        given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
+        given(classReservationRepository.findById(104L))
+                .willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> classReservationService.confirmReservation(7L, 104L))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("본인 상점의 예약만 처리할 수 있습니다.");
+    }
+
+    @Test
     void cancelReservation_throwsWhenReservationMissing() {
         User owner = User.builder().id(7L).name("운영자").build();
         Shop shop = Shop.builder().shopId(1L).user(owner).build();
 
         given(shopRepository.findByUser_Id(7L)).willReturn(Optional.of(shop));
-        given(classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(999L, 7L))
+        given(classReservationRepository.findById(999L))
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> classReservationService.cancelReservation(7L, 999L))

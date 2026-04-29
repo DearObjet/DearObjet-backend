@@ -22,9 +22,6 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
             LocalDateTime start,
             LocalDateTime end
     );
-
-    Optional<ClassReservation> findByReservationIdAndClasses_Shop_User_Id(Long reservationId, Long userId);
-
     @Query("""
             select coalesce(sum(r.guestCount), 0)
             from ClassReservation r

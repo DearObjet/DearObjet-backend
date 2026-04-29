@@ -33,6 +33,7 @@ public enum ErrorCode {
 
     // Class Reservation (CR0XX)
     CLASS_OWNER_CANNOT_RESERVE(HttpStatus.BAD_REQUEST, "CR001", "클래스를 개설한 본인은 예약할 수 없습니다"),
+    CLASS_RESERVATION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "CR002", "본인 상점의 예약만 처리할 수 있습니다"),
 
     // Auth (A0XX)
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다"),

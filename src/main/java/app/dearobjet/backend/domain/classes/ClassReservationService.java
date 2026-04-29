@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
+import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.shop.entity.ShopBusinessHour;
 import app.dearobjet.backend.domain.shop.repository.ShopBusinessHourRepository;
 import app.dearobjet.backend.domain.user.entity.User;
@@ -12,6 +13,7 @@ import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.exception.InvalidInputException;
+import app.dearobjet.backend.global.exception.UnauthorizedException;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,7 +44,7 @@ public class ClassReservationService {
 
     @Transactional(readOnly = true)
     public ClassReservationListResponse getReservations(Long userId, int year, int month) {
-        validateShopOwner(userId);
+        getOwnedShop(userId);
 
         YearMonth yearMonth = parseYearMonth(year, month);
         LocalDateTime start = yearMonth.atDay(1).atStartOfDay();
@@ -280,15 +282,22 @@ public class ClassReservationService {
         }
     }
 
-    private void validateShopOwner(Long userId) {
-        shopRepository.findByUser_Id(userId)
+    private Shop getOwnedShop(Long userId) {
+        return shopRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
     }
 
     private ClassReservation getOwnedReservation(Long userId, Long reservationId) {
-        validateShopOwner(userId);
-        return classReservationRepository.findByReservationIdAndClasses_Shop_User_Id(reservationId, userId)
+        Shop ownedShop = getOwnedShop(userId);
+        ClassReservation reservation = classReservationRepository.findById(reservationId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약을 찾을 수 없습니다."));
+        if (!reservation.getClasses().getShop().getShopId().equals(ownedShop.getShopId())) {
+            throw new UnauthorizedException(
+                    ErrorCode.CLASS_RESERVATION_ACCESS_DENIED,
+                    "본인 상점의 예약만 처리할 수 있습니다."
+            );
+        }
+        return reservation;
     }
 
     private ClassReservationListResponse.Item toReservationListItem(ClassReservation reservation) {
