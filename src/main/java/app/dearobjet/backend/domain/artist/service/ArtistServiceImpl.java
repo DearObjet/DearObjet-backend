@@ -1,5 +1,5 @@
 package app.dearobjet.backend.domain.artist.service;
-d
+
 import app.dearobjet.backend.domain.artist.dto.ArtistResponse;
 import app.dearobjet.backend.domain.artist.dto.ArtistListResponse;
 import app.dearobjet.backend.domain.artist.entity.Artist;
