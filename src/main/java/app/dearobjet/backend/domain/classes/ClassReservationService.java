@@ -1,7 +1,7 @@
 package app.dearobjet.backend.domain.classes;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
-import app.dearobjet.backend.domain.classes.dto.ClassReservationItemResponse;
+import app.dearobjet.backend.domain.classes.dto.ClassReservationResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
@@ -58,7 +58,7 @@ public class ClassReservationService {
                         end
                 );
 
-        List<ClassReservationItemResponse> reservationItems = new ArrayList<>();
+        List<ClassReservationResponse> reservationItems = new ArrayList<>();
         for (ClassReservation reservation : reservations) {
             reservationItems.add(toReservationListItem(reservation));
         }
@@ -301,8 +301,8 @@ public class ClassReservationService {
         return reservation;
     }
 
-    private ClassReservationItemResponse toReservationListItem(ClassReservation reservation) {
-        return new ClassReservationItemResponse(
+    private ClassReservationResponse toReservationListItem(ClassReservation reservation) {
+        return new ClassReservationResponse(
                 reservation.getReservationStatus() == null ? null : reservation.getReservationStatus().name(),
                 reservation.getReservationName(),
                 reservation.getUser() == null ? null : reservation.getUser().getPhoneNumber(),

@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @AllArgsConstructor
-public class ClassReservationItemResponse {
+public class ClassReservationResponse {
     private final String status;
     private final String reservationName;
     private final String phoneNumber;

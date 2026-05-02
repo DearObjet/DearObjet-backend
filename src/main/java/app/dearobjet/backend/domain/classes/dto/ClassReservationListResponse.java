@@ -9,5 +9,5 @@ import java.util.List;
 @AllArgsConstructor
 public class ClassReservationListResponse {
     private final long reservationCount;
-    private final List<ClassReservationItemResponse> reservations;
+    private final List<ClassReservationResponse> reservations;
 }
