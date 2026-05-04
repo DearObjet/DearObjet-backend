@@ -63,7 +63,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<BusinessProfileDetailResponse>> updateMyBusinessProfile(
             @Parameter(hidden = true)
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestPart("request") UpdateBusinessProfileRequest request,
+            @Valid @RequestPart(value = "request", required = false) UpdateBusinessProfileRequest request,
             @RequestPart(value = "bankbookImage", required = false) MultipartFile bankbookImage,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) {

@@ -10,4 +10,7 @@ public record UpdateBusinessProfileRequest(
         String accountHolder,
         String taxInvoiceEmail
 ) {
+    public static UpdateBusinessProfileRequest empty() {
+        return new UpdateBusinessProfileRequest(null, null, null, null, null, null, null, null);
+    }
 }

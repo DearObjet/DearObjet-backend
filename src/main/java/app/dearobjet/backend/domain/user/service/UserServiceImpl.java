@@ -80,6 +80,10 @@ public class UserServiceImpl implements UserService {
             MultipartFile bankbookImage,
             MultipartFile profileImage
     ) {
+        if (request == null) {
+            request = UpdateBusinessProfileRequest.empty();
+        }
+
         User user = getUser(userId);
         BusinessProfile businessProfile = businessProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
