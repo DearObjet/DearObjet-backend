@@ -69,7 +69,7 @@ public class PaymentService {
 
     @Transactional
     public void confirmPayment(Long userId, Long paymentId, ConfirmPaymentRequest req) {
-        Payment payment = paymentRepository.findById(paymentId)
+        Payment payment = paymentRepository.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException(paymentId));
 
         Order order = payment.getOrder();
@@ -78,6 +78,9 @@ public class PaymentService {
         }
 
         if (payment.getStatus() == PaymentStatus.DONE) return;
+        if (payment.isTerminal()) {
+            throw new PaymentBadRequestException("이미 처리 완료된 결제입니다. status=" + payment.getStatus());
+        }
 
         if (!order.getOrderNumber().equals(req.getOrderId())) {
             throw new PaymentBadRequestException("orderId가 주문번호와 다릅니다.");
@@ -122,10 +125,10 @@ public class PaymentService {
     public void handleWebhookToss(String paymentKey) {
         if (paymentKey == null || paymentKey.isBlank()) return;
 
-        Payment payment = paymentRepository.findByPaymentKey(paymentKey).orElse(null);
+        Payment payment = paymentRepository.findByPaymentKeyForUpdate(paymentKey).orElse(null);
         if (payment == null) return;
 
-        if (payment.getStatus() == PaymentStatus.DONE) return;
+        if (payment.isTerminal()) return;
 
         TossPaymentResponse tossPayment = tossClient.getPayment(paymentKey);
         String status = tossPayment == null ? null : tossPayment.getStatus();
@@ -140,6 +143,11 @@ public class PaymentService {
         if ("DONE".equals(status)) {
             payment.markDone(paymentKey);
             payment.getOrder().updateStatus(OrderStatus.PAID);
+        } else if ("CANCELED".equals(status)) {
+            payment.markCanceled();
+            payment.getOrder().cancel("WEBHOOK_CANCELED");
+        } else if ("ABORTED".equals(status) || "EXPIRED".equals(status)) {
+            payment.markFailed(status);
         }
     }
 

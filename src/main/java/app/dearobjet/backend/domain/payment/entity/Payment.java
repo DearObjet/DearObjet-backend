@@ -43,6 +43,12 @@ public class Payment extends BaseTimeEntity {
     @Column(length = 100)
     private String failReason;
 
+    public boolean isTerminal() {
+        return this.status == PaymentStatus.DONE
+                || this.status == PaymentStatus.CANCELED
+                || this.status == PaymentStatus.FAILED;
+    }
+
     public void markDone(String paymentKey) {
         this.status = PaymentStatus.DONE;
         this.paymentKey = paymentKey;
