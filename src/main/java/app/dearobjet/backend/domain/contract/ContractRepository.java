@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
@@ -74,5 +75,50 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             @Param("contractId") Long contractId,
             @Param("shopId") Long shopId,
             @Param("contractStatus") ContractStatus contractStatus
+    );
+
+    @Query("""
+            select c.shopArtistContractsId as contractId,
+                   a.id as artistId,
+                   bp.businessName as artistName,
+                   c.contractStartDate as contractStartDate,
+                   c.contractEndDate as contractEndDate,
+                   c.contractStatus as contractStatus
+            from ShopArtistContract c
+            join c.artist a
+            join a.businessProfile bp
+            where c.shop.shopId = :shopId
+              and c.contractStatus in :contractStatuses
+            order by case
+                        when c.contractStatus = :pendingStatus then 0
+                        when c.contractStatus = :approvedStatus then 1
+                        when c.contractStatus = :endedStatus then 2
+                        else 3
+                     end,
+                     c.shopArtistContractsId desc
+            """)
+    List<ManagedArtistContractRow> findManagedArtistRowsByShopId(
+            @Param("shopId") Long shopId,
+            @Param("contractStatuses") List<ContractStatus> contractStatuses,
+            @Param("pendingStatus") ContractStatus pendingStatus,
+            @Param("approvedStatus") ContractStatus approvedStatus,
+            @Param("endedStatus") ContractStatus endedStatus
+    );
+
+    @Query("""
+            select c
+            from ShopArtistContract c
+            join fetch c.artist a
+            join fetch a.businessProfile
+            join fetch c.shop s
+            join fetch s.businessProfile
+            where c.shopArtistContractsId = :contractId
+              and c.shop.shopId = :shopId
+              and c.contractStatus in :contractStatuses
+            """)
+    Optional<ShopArtistContract> findManagedArtistContractByIdAndShopId(
+            @Param("contractId") Long contractId,
+            @Param("shopId") Long shopId,
+            @Param("contractStatuses") List<ContractStatus> contractStatuses
     );
 }

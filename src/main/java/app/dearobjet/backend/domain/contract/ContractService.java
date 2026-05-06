@@ -7,6 +7,8 @@ import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
@@ -31,6 +33,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContractService {
 
+    private static final List<ContractStatus> MANAGED_ARTIST_CONTRACT_STATUSES = List.of(
+            ContractStatus.PENDING,
+            ContractStatus.APPROVED,
+            ContractStatus.ENDED
+    );
+
     private final ContractRepository contractRepository;
     private final ContractProductRepository contractProductRepository;
     private final ContractProductStockMovementRepository contractProductStockMovementRepository;
@@ -46,6 +54,38 @@ public class ContractService {
                 ContractStatus.PENDING
         );
         return new ContractApplicationCountResponse(applicationCount, artistNames);
+    }
+
+    @Transactional(readOnly = true)
+    public ManagedArtistContractListResponse getManagedArtists(Long userId) {
+        Shop shop = getShopByUserId(userId);
+
+        return ManagedArtistContractListResponse.from(
+                contractRepository.findManagedArtistRowsByShopId(
+                        shop.getShopId(),
+                        MANAGED_ARTIST_CONTRACT_STATUSES,
+                        ContractStatus.PENDING,
+                        ContractStatus.APPROVED,
+                        ContractStatus.ENDED
+                )
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ManagedArtistContractDetailResponse getManagedArtistContract(Long userId, Long contractId) {
+        Shop shop = getShopByUserId(userId);
+
+        ShopArtistContract contract = contractRepository.findManagedArtistContractByIdAndShopId(
+                        contractId,
+                        shop.getShopId(),
+                        MANAGED_ARTIST_CONTRACT_STATUSES
+                )
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계약서 정보를 찾을 수 없습니다."
+                ));
+
+        return ManagedArtistContractDetailResponse.from(contract);
     }
 
     @Transactional(readOnly = true)

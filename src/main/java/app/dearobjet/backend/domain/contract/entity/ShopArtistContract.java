@@ -11,6 +11,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -48,6 +49,12 @@ public class ShopArtistContract extends BaseTimeEntity {
 
     @Column(name = "commission_value", precision = 19, scale = 4)
     private BigDecimal commissionValue;
+
+    @Column(name = "contract_start_date")
+    private LocalDate contractStartDate;
+
+    @Column(name = "contract_end_date")
+    private LocalDate contractEndDate;
 
     @Builder.Default
     @Column(name = "memo", columnDefinition = "TEXT")

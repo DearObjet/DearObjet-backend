@@ -7,6 +7,8 @@ import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -35,6 +37,28 @@ public class ContractController {
             @RequestParam(required = false) Long userId
     ) {
         return ApiResponse.of(contractService.getPendingApplicationCount(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/artists")
+    public ApiResponse<ManagedArtistContractListResponse> getManagedArtists(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(contractService.getManagedArtists(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/artists/{contractId}")
+    public ApiResponse<ManagedArtistContractDetailResponse> getManagedArtistContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.getManagedArtistContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
     }
 
     @GetMapping("/inventory")
