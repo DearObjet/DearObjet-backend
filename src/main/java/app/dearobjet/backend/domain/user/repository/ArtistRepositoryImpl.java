@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.user.repository;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.artist.support.ArtistRandomOrder;
+import app.dearobjet.backend.domain.artist.support.ArtistRandomOrder.OrderSpec;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -12,14 +13,21 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class ArtistRepositoryImpl implements ArtistRepositoryCustom {
 
-    private static final String ORDER_EXPRESSION =
-            "MOD((a.id * :multiplier) + :seed, :prime)";
+    private static final String ORDER_EXPRESSION = """
+            MOD(
+                (MOD(a.id, :orderModulus) * MOD(a.id, :orderModulus) * :quadratic)
+                + (MOD(a.id, :orderModulus) * :linear)
+                + :offset,
+                :orderModulus
+            )
+            """;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
     public List<Artist> findRandomArtists(long seed, Long cursorArtistId, int limit) {
+        OrderSpec orderSpec = ArtistRandomOrder.createOrderSpec(seed);
         StringBuilder jpql = new StringBuilder("""
                 select a
                 from Artist a
@@ -45,11 +53,9 @@ public class ArtistRepositoryImpl implements ArtistRepositoryCustom {
                 .append(ORDER_EXPRESSION)
                 .append(" asc, a.id asc");
 
-        TypedQuery<Artist> query = entityManager.createQuery(jpql.toString(), Artist.class)
-                .setParameter("userStatus", UserStatus.ACTIVE)
-                .setParameter("seed", ArtistRandomOrder.normalizeSeed(seed))
-                .setParameter("multiplier", ArtistRandomOrder.MULTIPLIER)
-                .setParameter("prime", ArtistRandomOrder.PRIME)
+        TypedQuery<Artist> query = entityManager.createQuery(jpql.toString(), Artist.class);
+        applyOrderParameters(query, orderSpec);
+        query.setParameter("userStatus", UserStatus.ACTIVE)
                 .setMaxResults(limit);
 
         if (cursorArtistId != null) {
@@ -58,5 +64,12 @@ public class ArtistRepositoryImpl implements ArtistRepositoryCustom {
         }
 
         return query.getResultList();
+    }
+
+    private void applyOrderParameters(TypedQuery<Artist> query, OrderSpec orderSpec) {
+        query.setParameter("orderModulus", ArtistRandomOrder.ORDER_MODULUS);
+        query.setParameter("quadratic", orderSpec.quadratic());
+        query.setParameter("linear", orderSpec.linear());
+        query.setParameter("offset", orderSpec.offset());
     }
 }
