@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
@@ -30,6 +31,7 @@ import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.exception.InvalidInputException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,8 @@ public class ContractService {
 
     private static final int TERMINATION_GRACE_PERIOD_DAYS = 14;
     private static final int ARTIST_SUGGESTION_LIMIT = 10;
+    private static final int ARTIST_ACCOUNT_SEARCH_LIMIT = 10;
+    private static final int MIN_ARTIST_ACCOUNT_SEARCH_KEYWORD_LENGTH = 2;
 
     private static final List<ContractStatus> MANAGED_ARTIST_CONTRACT_STATUSES = List.of(
             ContractStatus.PENDING,
@@ -106,6 +110,26 @@ public class ContractService {
                 rows.stream()
                         .limit(ARTIST_SUGGESTION_LIMIT)
                         .toList()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistAccountSearchResponse searchArtistAccounts(Long userId, String keyword) {
+        Shop shop = getShopByUserId(userId);
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        if (normalizedKeyword.length() < MIN_ARTIST_ACCOUNT_SEARCH_KEYWORD_LENGTH) {
+            return ArtistAccountSearchResponse.from(List.of());
+        }
+
+        return ArtistAccountSearchResponse.from(
+                contractRepository.searchArtistAccountRows(
+                        shop.getShopId(),
+                        Role.ARTIST,
+                        UserStatus.ACTIVE,
+                        ARTIST_SUGGESTION_EXCLUDED_STATUSES,
+                        "%" + normalizedKeyword + "%",
+                        PageRequest.of(0, ARTIST_ACCOUNT_SEARCH_LIMIT)
+                )
         );
     }
 
@@ -256,6 +280,13 @@ public class ContractService {
 
         LocalDate endDate = contract.getContractEndDate();
         return endDate != null && !today.isBefore(endDate.plusDays(TERMINATION_GRACE_PERIOD_DAYS));
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null) {
+            return "";
+        }
+        return keyword.trim().toLowerCase();
     }
 
     private ContractProductStockMovement applyMovement(

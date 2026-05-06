@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
@@ -11,6 +12,7 @@ import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResp
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
@@ -156,6 +158,43 @@ class ContractServiceTest {
         assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 추천 작가");
         assertThat(response.getItems().get(0).getArtistImageUrl()).isEqualTo("https://image.test/suggested.png");
         assertThat(response.getItems().get(0).getInstagramId()).isEqualTo("suggested_artist");
+    }
+
+    @Test
+    @DisplayName("계약서 발송용 작가 계정을 검색한다")
+    void givenKeyword_whenSearchArtistAccounts_thenReturnMatchedArtistAccounts() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.searchArtistAccountRows(
+                SHOP_ID,
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                "%postman%",
+                org.springframework.data.domain.PageRequest.of(0, 10)
+        )).willReturn(List.of(artistAccountSearchRow(ARTIST_ID, USER_ID + 100, "Postman 검색 작가")));
+
+        ArtistAccountSearchResponse response = contractService.searchArtistAccounts(USER_ID, " Postman ");
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getArtistId()).isEqualTo(ARTIST_ID);
+        assertThat(response.getItems().get(0).getUserId()).isEqualTo(USER_ID + 100);
+        assertThat(response.getItems().get(0).getUserName()).isEqualTo("Postman 검색 사용자");
+        assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 검색 작가");
+        assertThat(response.getItems().get(0).getEmail()).isEqualTo("searched-artist@test.com");
+    }
+
+    @Test
+    @DisplayName("계약서 발송용 작가 계정 검색어가 2자 미만이면 빈 목록을 반환한다")
+    void givenShortKeyword_whenSearchArtistAccounts_thenReturnEmptyItems() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+
+        ArtistAccountSearchResponse response = contractService.searchArtistAccounts(USER_ID, "a");
+
+        assertThat(response.getItems()).isEmpty();
     }
 
     @Test
@@ -453,6 +492,50 @@ class ContractServiceTest {
             @Override
             public String getInstagramId() {
                 return "suggested_artist";
+            }
+        };
+    }
+
+    private ArtistAccountSearchRow artistAccountSearchRow(Long artistId, Long userId, String artistName) {
+        return new ArtistAccountSearchRow() {
+            @Override
+            public Long getArtistId() {
+                return artistId;
+            }
+
+            @Override
+            public Long getUserId() {
+                return userId;
+            }
+
+            @Override
+            public String getName() {
+                return "Postman 검색 사용자";
+            }
+
+            @Override
+            public String getArtistName() {
+                return artistName;
+            }
+
+            @Override
+            public String getArtistImageUrl() {
+                return "https://image.test/searched.png";
+            }
+
+            @Override
+            public Specialty getSpecialty() {
+                return Specialty.CERAMIC;
+            }
+
+            @Override
+            public String getInstagramId() {
+                return "searched_artist";
+            }
+
+            @Override
+            public String getEmail() {
+                return "searched-artist@test.com";
             }
         };
     }
