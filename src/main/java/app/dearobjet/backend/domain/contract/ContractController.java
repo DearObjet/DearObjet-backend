@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
@@ -55,6 +56,15 @@ public class ContractController {
             @RequestParam(required = false) Long userId
     ) {
         return ApiResponse.of(contractService.getArtistSuggestions(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/artists/search")
+    public ApiResponse<ArtistAccountSearchResponse> searchArtistAccounts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @RequestParam String keyword
+    ) {
+        return ApiResponse.of(contractService.searchArtistAccounts(resolveUserId(userDetails, userId), keyword));
     }
 
     @GetMapping("/artists/{contractId}")

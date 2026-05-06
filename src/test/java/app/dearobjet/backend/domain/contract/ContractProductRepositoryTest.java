@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -374,6 +376,166 @@ class ContractProductRepositoryTest {
                 .isEqualTo(eligibleArtist.getUser().getId());
     }
 
+    @Test
+    @DisplayName("계약서 발송용 작가 계정 검색은 상호명, 사용자 이름, 이메일로 검색한다")
+    void givenKeyword_whenSearchArtistAccounts_thenReturnMatchedActiveArtists() {
+        User shopUser = createUser(
+                "search-shop@test.com",
+                "검색 소품샵",
+                Role.SHOP,
+                "01094000001",
+                null
+        );
+        Shop shop = createShop(shopUser, "검색 테스트 소품샵", Specialty.LIVING_GOODS);
+        Artist businessNameMatchedArtist = createArtist(
+                createUser("search-business@test.com", "비즈니스 매칭 사용자", Role.ARTIST, "01094000002", null),
+                "Postman 세라믹 스튜디오",
+                Specialty.CERAMIC
+        );
+        Artist userNameMatchedArtist = createArtist(
+                createUser("search-name@test.com", "Postman 이름 작가", Role.ARTIST, "01094000003", null),
+                "이름 검색 스튜디오",
+                Specialty.HANDMADE_CRAFT
+        );
+        Artist emailMatchedArtist = createArtist(
+                createUser("postman-email@test.com", "이메일 검색 작가", Role.ARTIST, "01094000004", null),
+                "이메일 검색 스튜디오",
+                Specialty.FABRIC_TEXTILE
+        );
+        createArtist(
+                createUser("search-customer@test.com", "Postman 일반 회원", Role.CUSTOMER, "01094000005", null),
+                "일반 회원 스튜디오",
+                Specialty.INTERIOR_DECOR
+        );
+        User inactiveUser = createUser(
+                "search-inactive@test.com",
+                "Postman 비활성 작가",
+                Role.ARTIST,
+                "01094000006",
+                null
+        );
+        inactiveUser.deactivate();
+        createArtist(inactiveUser, "비활성 스튜디오", Specialty.CERAMIC);
+        flushAndClear();
+
+        var rows = contractRepository.searchArtistAccountRows(
+                shop.getShopId(),
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                "%postman%",
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(rows).extracting("artistName")
+                .contains(
+                        "Postman 세라믹 스튜디오",
+                        "이름 검색 스튜디오",
+                        "이메일 검색 스튜디오"
+                )
+                .doesNotContain(
+                        "일반 회원 스튜디오",
+                        "비활성 스튜디오"
+                );
+        assertThat(findAccountSearchRow(rows, "Postman 세라믹 스튜디오").getArtistId())
+                .isEqualTo(businessNameMatchedArtist.getId());
+        assertThat(findAccountSearchRow(rows, "이름 검색 스튜디오").getUserId())
+                .isEqualTo(userNameMatchedArtist.getUser().getId());
+        assertThat(findAccountSearchRow(rows, "이름 검색 스튜디오").getName())
+                .isEqualTo("Postman 이름 작가");
+        assertThat(findAccountSearchRow(rows, "이메일 검색 스튜디오").getEmail())
+                .isEqualTo(emailMatchedArtist.getUser().getEmail());
+    }
+
+    @Test
+    @DisplayName("계약서 발송용 작가 계정 검색은 현재 소품샵의 진행중 계약 작가를 제외한다")
+    void givenCurrentShopContracts_whenSearchArtistAccounts_thenExcludePendingApprovedEndedOnly() {
+        User shopUser = createUser(
+                "search-contract-shop@test.com",
+                "계약 검색 소품샵",
+                Role.SHOP,
+                "01095000001",
+                null
+        );
+        User otherShopUser = createUser(
+                "search-contract-other-shop@test.com",
+                "계약 검색 다른샵",
+                Role.SHOP,
+                "01095000002",
+                null
+        );
+        Shop shop = createShop(shopUser, "계약 검색 테스트 소품샵", Specialty.LIVING_GOODS);
+        Shop otherShop = createShop(otherShopUser, "계약 검색 다른 소품샵", Specialty.LIVING_GOODS);
+
+        Artist eligibleArtist = createArtist(
+                createUser("account-eligible@test.com", "검색 가능 작가", Role.ARTIST, "01095000003", null),
+                "계약 검색 가능 작가",
+                Specialty.CERAMIC
+        );
+        Artist rejectedArtist = createArtist(
+                createUser("account-rejected@test.com", "검색 거절 이력 작가", Role.ARTIST, "01095000004", null),
+                "계약 검색 거절 이력 작가",
+                Specialty.HANDMADE_CRAFT
+        );
+        Artist terminatedArtist = createArtist(
+                createUser("account-terminated@test.com", "검색 해지 이력 작가", Role.ARTIST, "01095000005", null),
+                "계약 검색 해지 이력 작가",
+                Specialty.FABRIC_TEXTILE
+        );
+        Artist otherShopContractArtist = createArtist(
+                createUser("account-other-shop@test.com", "검색 다른샵 계약 작가", Role.ARTIST, "01095000006", null),
+                "계약 검색 다른샵 계약 작가",
+                Specialty.INTERIOR_DECOR
+        );
+        Artist pendingArtist = createArtist(
+                createUser("account-pending@test.com", "검색 대기 제외 작가", Role.ARTIST, "01095000007", null),
+                "계약 검색 대기 제외 작가",
+                Specialty.CERAMIC
+        );
+        Artist approvedArtist = createArtist(
+                createUser("account-approved@test.com", "검색 승인 제외 작가", Role.ARTIST, "01095000008", null),
+                "계약 검색 승인 제외 작가",
+                Specialty.CERAMIC
+        );
+        Artist endedArtist = createArtist(
+                createUser("account-ended@test.com", "검색 만료 제외 작가", Role.ARTIST, "01095000009", null),
+                "계약 검색 만료 제외 작가",
+                Specialty.CERAMIC
+        );
+
+        createContract(rejectedArtist, shop, ContractStatus.REJECTED, ContractRequestType.NONE, null, null);
+        createContract(terminatedArtist, shop, ContractStatus.TERMINATED, ContractRequestType.NONE, null, null);
+        createContract(otherShopContractArtist, otherShop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        createContract(pendingArtist, shop, ContractStatus.PENDING, ContractRequestType.EXTENSION, null, null);
+        createContract(approvedArtist, shop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        createContract(endedArtist, shop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        flushAndClear();
+
+        var rows = contractRepository.searchArtistAccountRows(
+                shop.getShopId(),
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                "%계약 검색%",
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(rows).extracting("artistName")
+                .contains(
+                        "계약 검색 가능 작가",
+                        "계약 검색 거절 이력 작가",
+                        "계약 검색 해지 이력 작가",
+                        "계약 검색 다른샵 계약 작가"
+                )
+                .doesNotContain(
+                        "계약 검색 대기 제외 작가",
+                        "계약 검색 승인 제외 작가",
+                        "계약 검색 만료 제외 작가"
+                );
+        assertThat(findAccountSearchRow(rows, "계약 검색 가능 작가").getArtistId())
+                .isEqualTo(eligibleArtist.getId());
+    }
+
     private InventoryFixture createInventoryFixture() {
         User shopUser = createUser(
                 "postman-shop@test.com",
@@ -611,6 +773,13 @@ class ContractProductRepositoryTest {
     }
 
     private ArtistSuggestionRow findSuggestionRow(List<ArtistSuggestionRow> rows, String artistName) {
+        return rows.stream()
+                .filter(row -> artistName.equals(row.getArtistName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ArtistAccountSearchRow findAccountSearchRow(List<ArtistAccountSearchRow> rows, String artistName) {
         return rows.stream()
                 .filter(row -> artistName.equals(row.getArtistName()))
                 .findFirst()
