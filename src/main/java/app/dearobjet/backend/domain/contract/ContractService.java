@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
@@ -21,6 +22,9 @@ import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.contract.repository.ContractProductRepository;
 import app.dearobjet.backend.domain.contract.repository.ContractProductStockMovementRepository;
 import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
@@ -31,6 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -38,8 +44,15 @@ import java.util.List;
 public class ContractService {
 
     private static final int TERMINATION_GRACE_PERIOD_DAYS = 14;
+    private static final int ARTIST_SUGGESTION_LIMIT = 10;
 
     private static final List<ContractStatus> MANAGED_ARTIST_CONTRACT_STATUSES = List.of(
+            ContractStatus.PENDING,
+            ContractStatus.APPROVED,
+            ContractStatus.ENDED
+    );
+
+    private static final List<ContractStatus> ARTIST_SUGGESTION_EXCLUDED_STATUSES = List.of(
             ContractStatus.PENDING,
             ContractStatus.APPROVED,
             ContractStatus.ENDED
@@ -75,6 +88,24 @@ public class ContractService {
                         ContractStatus.ENDED
                 ),
                 LocalDate.now()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistSuggestionListResponse getArtistSuggestions(Long userId) {
+        Shop shop = getShopByUserId(userId);
+        List<ArtistSuggestionRow> rows = new ArrayList<>(contractRepository.findArtistSuggestionRows(
+                shop.getShopId(),
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                ARTIST_SUGGESTION_EXCLUDED_STATUSES
+        ));
+
+        Collections.shuffle(rows);
+        return ArtistSuggestionListResponse.from(
+                rows.stream()
+                        .limit(ARTIST_SUGGESTION_LIMIT)
+                        .toList()
         );
     }
 
