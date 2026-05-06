@@ -5,7 +5,7 @@ import app.dearobjet.backend.domain.user.entity.User;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ArtistRepository extends JpaRepository<Artist, Long> {
+public interface ArtistRepository extends JpaRepository<Artist, Long>, ArtistRepositoryCustom {
 
     Optional<Artist> findByUser(User user);
 
