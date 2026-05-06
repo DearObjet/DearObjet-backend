@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.contract.dto;
 
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import lombok.AccessLevel;
@@ -22,8 +23,9 @@ public class ManagedArtistContractItemResponse {
     private final ContractStatusActionResponse nextAction;
     private final Boolean detailAvailable;
 
-    public static ManagedArtistContractItemResponse from(ManagedArtistContractRow row) {
-        ContractStatus status = row.getContractStatus();
+    public static ManagedArtistContractItemResponse from(ManagedArtistContractRow row, LocalDate today) {
+        ContractStatus displayStatus = displayStatus(row, today);
+        boolean terminable = isTerminable(row, today);
 
         return new ManagedArtistContractItemResponse(
                 row.getContractId(),
@@ -31,11 +33,33 @@ public class ManagedArtistContractItemResponse {
                 row.getArtistName(),
                 row.getContractStartDate(),
                 row.getContractEndDate(),
-                status,
-                statusLabel(status),
-                ContractStatusActionResponse.from(status),
+                displayStatus,
+                statusLabel(displayStatus),
+                ContractStatusActionResponse.from(
+                        row.getContractStatus(),
+                        row.getContractRequestType(),
+                        terminable
+                ),
                 true
         );
+    }
+
+    private static ContractStatus displayStatus(ManagedArtistContractRow row, LocalDate today) {
+        if (row.getContractStatus() == ContractStatus.APPROVED && isTerminable(row, today)) {
+            return ContractStatus.ENDED;
+        }
+
+        return row.getContractStatus();
+    }
+
+    private static boolean isTerminable(ManagedArtistContractRow row, LocalDate today) {
+        LocalDate endDate = row.getContractEndDate();
+        if (endDate == null || today == null) {
+            return false;
+        }
+
+        // 계약 종료일 이후 작가 응답이 없는 경우, 14일째부터 소품샵 해지를 노출한다.
+        return !today.isBefore(endDate.plusDays(14));
     }
 
     private static String statusLabel(ContractStatus status) {
@@ -44,6 +68,7 @@ public class ManagedArtistContractItemResponse {
             case APPROVED -> "계약중";
             case ENDED -> "계약 만료";
             case REJECTED -> "계약 거절";
+            case TERMINATED -> "계약 해지";
         };
     }
 }

@@ -4,5 +4,6 @@ public enum ContractStatus {
     PENDING,
     APPROVED,
     REJECTED,
-    ENDED
+    ENDED,
+    TERMINATED
 }

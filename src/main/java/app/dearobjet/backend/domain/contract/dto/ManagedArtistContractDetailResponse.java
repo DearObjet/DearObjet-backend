@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract.dto;
 
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -22,6 +23,7 @@ public class ManagedArtistContractDetailResponse {
     private final LocalDate contractStartDate;
     private final LocalDate contractEndDate;
     private final ContractStatus contractStatus;
+    private final ContractRequestType contractRequestType;
     private final CommissionType commissionType;
     private final BigDecimal commissionValue;
     private final String memo;
@@ -36,6 +38,7 @@ public class ManagedArtistContractDetailResponse {
                 contract.getContractStartDate(),
                 contract.getContractEndDate(),
                 contract.getContractStatus(),
+                contract.getContractRequestType(),
                 contract.getCommissionType(),
                 contract.getCommissionValue(),
                 contract.getMemo() == null ? "" : contract.getMemo()

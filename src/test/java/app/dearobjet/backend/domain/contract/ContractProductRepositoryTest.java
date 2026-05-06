@@ -7,6 +7,7 @@ import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
@@ -176,8 +177,13 @@ class ContractProductRepositoryTest {
                 "만료 작가",
                 Specialty.FABRIC_TEXTILE
         );
+        Artist terminatedArtist = createArtist(
+                createUser("managed-terminated@test.com", "해지 작가", Role.ARTIST, "01091000005", null),
+                "해지 작가",
+                Specialty.INTERIOR_DECOR
+        );
         Artist rejectedArtist = createArtist(
-                createUser("managed-rejected@test.com", "거절 작가", Role.ARTIST, "01091000005", null),
+                createUser("managed-rejected@test.com", "거절 작가", Role.ARTIST, "01091000006", null),
                 "거절 작가",
                 Specialty.INTERIOR_DECOR
         );
@@ -186,6 +192,7 @@ class ContractProductRepositoryTest {
                 pendingArtist,
                 shop,
                 ContractStatus.PENDING,
+                ContractRequestType.EXTENSION,
                 null,
                 null
         );
@@ -193,6 +200,7 @@ class ContractProductRepositoryTest {
                 approvedArtist,
                 shop,
                 ContractStatus.APPROVED,
+                ContractRequestType.NONE,
                 CONTRACT_START_DATE,
                 CONTRACT_END_DATE
         );
@@ -200,9 +208,11 @@ class ContractProductRepositoryTest {
                 endedArtist,
                 shop,
                 ContractStatus.ENDED,
+                ContractRequestType.NONE,
                 CONTRACT_START_DATE.minusYears(1),
                 CONTRACT_END_DATE.minusYears(1)
         );
+        createContract(terminatedArtist, shop, ContractStatus.TERMINATED, ContractRequestType.NONE, null, null);
         createContract(rejectedArtist, shop, ContractStatus.REJECTED, null, null);
         flushAndClear();
 
@@ -224,6 +234,8 @@ class ContractProductRepositoryTest {
         assertThat(findManagedArtistRow(rows, "계약 작가").getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
         assertThat(findManagedArtistRow(rows, "계약 작가").getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
         assertThat(findManagedArtistRow(rows, "계약 작가").getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+        assertThat(findManagedArtistRow(rows, "대기 작가").getContractRequestType())
+                .isEqualTo(ContractRequestType.EXTENSION);
     }
 
     @Test
@@ -246,6 +258,7 @@ class ContractProductRepositoryTest {
                 artist,
                 shop,
                 ContractStatus.APPROVED,
+                ContractRequestType.RELEASE,
                 CONTRACT_START_DATE,
                 CONTRACT_END_DATE
         );
@@ -267,6 +280,7 @@ class ContractProductRepositoryTest {
         assertThat(found.get().getShop().getBusinessName()).isEqualTo("상세 테스트 소품샵");
         assertThat(found.get().getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
         assertThat(found.get().getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
+        assertThat(found.get().getContractRequestType()).isEqualTo(ContractRequestType.RELEASE);
         assertThat(notOwned).isEmpty();
     }
 
@@ -423,10 +437,22 @@ class ContractProductRepositoryTest {
             LocalDate contractStartDate,
             LocalDate contractEndDate
     ) {
+        return createContract(artist, shop, contractStatus, ContractRequestType.NONE, contractStartDate, contractEndDate);
+    }
+
+    private ShopArtistContract createContract(
+            Artist artist,
+            Shop shop,
+            ContractStatus contractStatus,
+            ContractRequestType contractRequestType,
+            LocalDate contractStartDate,
+            LocalDate contractEndDate
+    ) {
         ShopArtistContract contract = ShopArtistContract.builder()
                 .artist(artist)
                 .shop(shop)
                 .contractStatus(contractStatus)
+                .contractRequestType(contractRequestType)
                 .contractStartDate(contractStartDate)
                 .contractEndDate(contractEndDate)
                 .commissionType(CommissionType.RATE)

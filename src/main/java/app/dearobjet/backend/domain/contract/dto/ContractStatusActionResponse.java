@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.contract.dto;
 
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -12,12 +13,22 @@ public class ContractStatusActionResponse {
     private final String code;
     private final String label;
 
-    public static ContractStatusActionResponse from(ContractStatus status) {
+    public static ContractStatusActionResponse from(
+            ContractStatus status,
+            ContractRequestType requestType,
+            boolean terminable
+    ) {
+        if (status == ContractStatus.PENDING && requestType == ContractRequestType.RELEASE) {
+            return new ContractStatusActionResponse("RELEASE_APPROVE", "해제 승인");
+        }
+        if (status == ContractStatus.APPROVED && terminable) {
+            return new ContractStatusActionResponse("TERMINATE_CONTRACT", "계약해지");
+        }
+
         return switch (status) {
             case PENDING -> new ContractStatusActionResponse("CONTRACT_APPROVE", "계약 승인");
-            case APPROVED -> new ContractStatusActionResponse("RELEASE_APPROVE", "해제 승인");
-            case ENDED -> new ContractStatusActionResponse("CONTRACTING", "계약중");
-            case REJECTED -> new ContractStatusActionResponse("NONE", "변경 불가");
+            case ENDED -> new ContractStatusActionResponse("TERMINATE_CONTRACT", "계약해지");
+            case APPROVED, REJECTED, TERMINATED -> new ContractStatusActionResponse("NONE", "변경 불가");
         };
     }
 }
