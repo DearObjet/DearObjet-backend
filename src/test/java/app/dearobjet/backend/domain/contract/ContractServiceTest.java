@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
@@ -10,6 +11,7 @@ import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResp
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
@@ -26,6 +28,8 @@ import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.user.entity.BusinessProfile;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Specialty;
+import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.InvalidInputException;
@@ -97,6 +101,61 @@ class ContractServiceTest {
         assertThat(response.getItems().get(0).getContractId()).isEqualTo(CONTRACT_ID);
         assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 도자기 작가");
         assertThat(response.getItems().get(0).getInboundConfirmed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("입점 작가 제안 목록에서 랜덤 최대 10명을 조회한다")
+    void givenEligibleArtists_whenGetArtistSuggestions_thenReturnUpToTenArtists() {
+        Shop shop = shopWithId(SHOP_ID);
+        List<ArtistSuggestionRow> rows = java.util.stream.LongStream.rangeClosed(1, 12)
+                .mapToObj(index -> artistSuggestionRow(
+                        ARTIST_ID + index,
+                        USER_ID + index,
+                        "추천 작가 " + index
+                ))
+                .toList();
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findArtistSuggestionRows(
+                SHOP_ID,
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(rows);
+
+        ArtistSuggestionListResponse response = contractService.getArtistSuggestions(USER_ID);
+
+        assertThat(response.getItems()).hasSize(10);
+        assertThat(response.getItems())
+                .allSatisfy(item -> {
+                    assertThat(item.getArtistId()).isNotNull();
+                    assertThat(item.getUserId()).isNotNull();
+                    assertThat(item.getArtistName()).startsWith("추천 작가 ");
+                    assertThat(item.getSpecialty()).isEqualTo(Specialty.CERAMIC);
+                });
+    }
+
+    @Test
+    @DisplayName("입점 작가 제안 목록에 채팅방 생성용 사용자 ID를 포함한다")
+    void givenEligibleArtist_whenGetArtistSuggestions_thenReturnArtistAndUserIdentifiers() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findArtistSuggestionRows(
+                SHOP_ID,
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(List.of(artistSuggestionRow(ARTIST_ID, USER_ID + 100, "Postman 추천 작가")));
+
+        ArtistSuggestionListResponse response = contractService.getArtistSuggestions(USER_ID);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getArtistId()).isEqualTo(ARTIST_ID);
+        assertThat(response.getItems().get(0).getUserId()).isEqualTo(USER_ID + 100);
+        assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 추천 작가");
+        assertThat(response.getItems().get(0).getArtistImageUrl()).isEqualTo("https://image.test/suggested.png");
+        assertThat(response.getItems().get(0).getInstagramId()).isEqualTo("suggested_artist");
     }
 
     @Test
@@ -360,6 +419,40 @@ class ContractServiceTest {
             @Override
             public Boolean getInboundConfirmed() {
                 return false;
+            }
+        };
+    }
+
+    private ArtistSuggestionRow artistSuggestionRow(Long artistId, Long userId, String artistName) {
+        return new ArtistSuggestionRow() {
+            @Override
+            public Long getArtistId() {
+                return artistId;
+            }
+
+            @Override
+            public Long getUserId() {
+                return userId;
+            }
+
+            @Override
+            public String getArtistName() {
+                return artistName;
+            }
+
+            @Override
+            public String getArtistImageUrl() {
+                return "https://image.test/suggested.png";
+            }
+
+            @Override
+            public Specialty getSpecialty() {
+                return Specialty.CERAMIC;
+            }
+
+            @Override
+            public String getInstagramId() {
+                return "suggested_artist";
             }
         };
     }

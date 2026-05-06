@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
@@ -284,6 +285,95 @@ class ContractProductRepositoryTest {
         assertThat(notOwned).isEmpty();
     }
 
+    @Test
+    @DisplayName("입점 작가 제안 목록은 현재 진행중 계약이 없는 활성 작가만 반환한다")
+    void givenArtistsAndContracts_whenQuerySuggestions_thenExcludeCurrentShopActiveContractsOnly() {
+        User shopUser = createUser(
+                "suggestion-shop@test.com",
+                "추천 소품샵",
+                Role.SHOP,
+                "01093000001",
+                null
+        );
+        User otherShopUser = createUser(
+                "suggestion-other-shop@test.com",
+                "다른 소품샵",
+                Role.SHOP,
+                "01093000002",
+                null
+        );
+        Shop shop = createShop(shopUser, "추천 테스트 소품샵", Specialty.LIVING_GOODS);
+        Shop otherShop = createShop(otherShopUser, "다른 테스트 소품샵", Specialty.LIVING_GOODS);
+
+        Artist eligibleArtist = createArtist(
+                createUser("suggestion-eligible@test.com", "추천 가능 작가", Role.ARTIST, "01093000003", null),
+                "추천 가능 작가",
+                Specialty.CERAMIC
+        );
+        Artist rejectedArtist = createArtist(
+                createUser("suggestion-rejected@test.com", "거절 이력 작가", Role.ARTIST, "01093000004", null),
+                "거절 이력 작가",
+                Specialty.HANDMADE_CRAFT
+        );
+        Artist terminatedArtist = createArtist(
+                createUser("suggestion-terminated@test.com", "해지 이력 작가", Role.ARTIST, "01093000005", null),
+                "해지 이력 작가",
+                Specialty.FABRIC_TEXTILE
+        );
+        Artist otherShopContractArtist = createArtist(
+                createUser("suggestion-other-contract@test.com", "다른샵 계약 작가", Role.ARTIST, "01093000006", null),
+                "다른샵 계약 작가",
+                Specialty.INTERIOR_DECOR
+        );
+        Artist pendingArtist = createArtist(
+                createUser("suggestion-pending@test.com", "대기 제외 작가", Role.ARTIST, "01093000007", null),
+                "대기 제외 작가",
+                Specialty.CERAMIC
+        );
+        Artist approvedArtist = createArtist(
+                createUser("suggestion-approved@test.com", "계약 제외 작가", Role.ARTIST, "01093000008", null),
+                "계약 제외 작가",
+                Specialty.CERAMIC
+        );
+        Artist endedArtist = createArtist(
+                createUser("suggestion-ended@test.com", "만료 제외 작가", Role.ARTIST, "01093000009", null),
+                "만료 제외 작가",
+                Specialty.CERAMIC
+        );
+
+        createContract(rejectedArtist, shop, ContractStatus.REJECTED, ContractRequestType.NONE, null, null);
+        createContract(terminatedArtist, shop, ContractStatus.TERMINATED, ContractRequestType.NONE, null, null);
+        createContract(otherShopContractArtist, otherShop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        createContract(pendingArtist, shop, ContractStatus.PENDING, ContractRequestType.EXTENSION, null, null);
+        createContract(approvedArtist, shop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        createContract(endedArtist, shop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        flushAndClear();
+
+        var rows = contractRepository.findArtistSuggestionRows(
+                shop.getShopId(),
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        );
+
+        assertThat(rows).extracting("artistName")
+                .contains(
+                        "추천 가능 작가",
+                        "거절 이력 작가",
+                        "해지 이력 작가",
+                        "다른샵 계약 작가"
+                )
+                .doesNotContain(
+                        "대기 제외 작가",
+                        "계약 제외 작가",
+                        "만료 제외 작가"
+                );
+        assertThat(findSuggestionRow(rows, "추천 가능 작가").getArtistId())
+                .isEqualTo(eligibleArtist.getId());
+        assertThat(findSuggestionRow(rows, "추천 가능 작가").getUserId())
+                .isEqualTo(eligibleArtist.getUser().getId());
+    }
+
     private InventoryFixture createInventoryFixture() {
         User shopUser = createUser(
                 "postman-shop@test.com",
@@ -514,6 +604,13 @@ class ContractProductRepositoryTest {
             List<app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow> rows,
             String artistName
     ) {
+        return rows.stream()
+                .filter(row -> artistName.equals(row.getArtistName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ArtistSuggestionRow findSuggestionRow(List<ArtistSuggestionRow> rows, String artistName) {
         return rows.stream()
                 .filter(row -> artistName.equals(row.getArtistName()))
                 .findFirst()

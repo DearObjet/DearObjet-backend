@@ -1,10 +1,13 @@
 package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
+import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -121,5 +124,32 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             @Param("contractId") Long contractId,
             @Param("shopId") Long shopId,
             @Param("contractStatuses") List<ContractStatus> contractStatuses
+    );
+
+    @Query("""
+            select a.id as artistId,
+                   u.id as userId,
+                   bp.businessName as artistName,
+                   u.profileUrl as artistImageUrl,
+                   bp.specialty as specialty,
+                   a.instagramId as instagramId
+            from Artist a
+            join a.user u
+            join a.businessProfile bp
+            where u.role = :artistRole
+              and u.userStatus = :activeStatus
+              and not exists (
+                  select 1
+                  from ShopArtistContract c
+                  where c.shop.shopId = :shopId
+                    and c.artist = a
+                    and c.contractStatus in :excludedStatuses
+              )
+            """)
+    List<ArtistSuggestionRow> findArtistSuggestionRows(
+            @Param("shopId") Long shopId,
+            @Param("artistRole") Role artistRole,
+            @Param("activeStatus") UserStatus activeStatus,
+            @Param("excludedStatuses") List<ContractStatus> excludedStatuses
     );
 }
