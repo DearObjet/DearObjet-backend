@@ -2,11 +2,16 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -35,6 +40,59 @@ public class ContractController {
             @RequestParam(required = false) Long userId
     ) {
         return ApiResponse.of(contractService.getPendingApplicationCount(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/artists")
+    public ApiResponse<ManagedArtistContractListResponse> getManagedArtists(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(contractService.getManagedArtists(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/artists/suggestions")
+    public ApiResponse<ArtistSuggestionListResponse> getArtistSuggestions(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(contractService.getArtistSuggestions(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/artists/search")
+    public ApiResponse<ArtistAccountSearchResponse> searchArtistAccounts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @RequestParam String keyword
+    ) {
+        return ApiResponse.of(contractService.searchArtistAccounts(resolveUserId(userDetails, userId), keyword));
+    }
+
+    @GetMapping("/artists/{contractId}")
+    public ApiResponse<ManagedArtistContractDetailResponse> getManagedArtistContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.getManagedArtistContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
+
+    @PatchMapping("/artists/{contractId}/termination")
+    public ApiResponse<ContractTerminationResponse> terminateManagedArtistContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.terminateManagedArtistContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
     }
 
     @GetMapping("/inventory")

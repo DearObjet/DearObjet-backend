@@ -2,34 +2,65 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
+import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.contract.repository.ContractProductRepository;
 import app.dearobjet.backend.domain.contract.repository.ContractProductStockMovementRepository;
 import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.exception.InvalidInputException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ContractService {
+
+    private static final int TERMINATION_GRACE_PERIOD_DAYS = 14;
+    private static final int ARTIST_SUGGESTION_LIMIT = 10;
+    private static final int ARTIST_ACCOUNT_SEARCH_LIMIT = 10;
+    private static final int MIN_ARTIST_ACCOUNT_SEARCH_KEYWORD_LENGTH = 2;
+
+    private static final List<ContractStatus> MANAGED_ARTIST_CONTRACT_STATUSES = List.of(
+            ContractStatus.PENDING,
+            ContractStatus.APPROVED,
+            ContractStatus.ENDED
+    );
+
+    private static final List<ContractStatus> ARTIST_SUGGESTION_EXCLUDED_STATUSES = List.of(
+            ContractStatus.PENDING,
+            ContractStatus.APPROVED,
+            ContractStatus.ENDED
+    );
 
     private final ContractRepository contractRepository;
     private final ContractProductRepository contractProductRepository;
@@ -46,6 +77,102 @@ public class ContractService {
                 ContractStatus.PENDING
         );
         return new ContractApplicationCountResponse(applicationCount, artistNames);
+    }
+
+    @Transactional(readOnly = true)
+    public ManagedArtistContractListResponse getManagedArtists(Long userId) {
+        Shop shop = getShopByUserId(userId);
+
+        return ManagedArtistContractListResponse.from(
+                contractRepository.findManagedArtistRowsByShopId(
+                        shop.getShopId(),
+                        MANAGED_ARTIST_CONTRACT_STATUSES,
+                        ContractStatus.PENDING,
+                        ContractStatus.APPROVED,
+                        ContractStatus.ENDED
+                ),
+                LocalDate.now()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistSuggestionListResponse getArtistSuggestions(Long userId) {
+        Shop shop = getShopByUserId(userId);
+        List<ArtistSuggestionRow> rows = new ArrayList<>(contractRepository.findArtistSuggestionRows(
+                shop.getShopId(),
+                Role.ARTIST,
+                UserStatus.ACTIVE,
+                ARTIST_SUGGESTION_EXCLUDED_STATUSES
+        ));
+
+        Collections.shuffle(rows);
+        return ArtistSuggestionListResponse.from(
+                rows.stream()
+                        .limit(ARTIST_SUGGESTION_LIMIT)
+                        .toList()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistAccountSearchResponse searchArtistAccounts(Long userId, String keyword) {
+        Shop shop = getShopByUserId(userId);
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        if (normalizedKeyword.length() < MIN_ARTIST_ACCOUNT_SEARCH_KEYWORD_LENGTH) {
+            return ArtistAccountSearchResponse.from(List.of());
+        }
+
+        return ArtistAccountSearchResponse.from(
+                contractRepository.searchArtistAccountRows(
+                        shop.getShopId(),
+                        Role.ARTIST,
+                        UserStatus.ACTIVE,
+                        ARTIST_SUGGESTION_EXCLUDED_STATUSES,
+                        "%" + normalizedKeyword + "%",
+                        PageRequest.of(0, ARTIST_ACCOUNT_SEARCH_LIMIT)
+                )
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ManagedArtistContractDetailResponse getManagedArtistContract(Long userId, Long contractId) {
+        Shop shop = getShopByUserId(userId);
+
+        ShopArtistContract contract = contractRepository.findManagedArtistContractByIdAndShopId(
+                        contractId,
+                        shop.getShopId(),
+                        MANAGED_ARTIST_CONTRACT_STATUSES
+                )
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계약서 정보를 찾을 수 없습니다."
+                ));
+
+        return ManagedArtistContractDetailResponse.from(contract);
+    }
+
+    @Transactional
+    public ContractTerminationResponse terminateManagedArtistContract(Long userId, Long contractId) {
+        Shop shop = getShopByUserId(userId);
+
+        ShopArtistContract contract = contractRepository.findManagedArtistContractByIdAndShopId(
+                        contractId,
+                        shop.getShopId(),
+                        MANAGED_ARTIST_CONTRACT_STATUSES
+                )
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "해지할 계약 정보를 찾을 수 없습니다."
+                ));
+
+        if (!canTerminate(contract, LocalDate.now())) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "해지 승인 또는 계약해지가 가능한 계약이 아닙니다."
+            );
+        }
+
+        contract.terminate();
+        return ContractTerminationResponse.from(contract);
     }
 
     @Transactional(readOnly = true)
@@ -138,6 +265,28 @@ public class ContractService {
                         ErrorCode.ENTITY_NOT_FOUND,
                         "계약된 작가를 찾을 수 없습니다."
                 ));
+    }
+
+    private boolean canTerminate(ShopArtistContract contract, LocalDate today) {
+        if (contract.getContractStatus() == ContractStatus.PENDING) {
+            return contract.getContractRequestType() == ContractRequestType.RELEASE;
+        }
+        if (contract.getContractStatus() == ContractStatus.ENDED) {
+            return true;
+        }
+        if (contract.getContractStatus() != ContractStatus.APPROVED) {
+            return false;
+        }
+
+        LocalDate endDate = contract.getContractEndDate();
+        return endDate != null && !today.isBefore(endDate.plusDays(TERMINATION_GRACE_PERIOD_DAYS));
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null) {
+            return "";
+        }
+        return keyword.trim().toLowerCase();
     }
 
     private ContractProductStockMovement applyMovement(

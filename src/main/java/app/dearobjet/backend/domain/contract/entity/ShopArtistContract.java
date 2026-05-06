@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract.entity;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
@@ -11,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -49,6 +51,17 @@ public class ShopArtistContract extends BaseTimeEntity {
     @Column(name = "commission_value", precision = 19, scale = 4)
     private BigDecimal commissionValue;
 
+    @Column(name = "contract_start_date")
+    private LocalDate contractStartDate;
+
+    @Column(name = "contract_end_date")
+    private LocalDate contractEndDate;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "contract_request_type", nullable = false, length = 20)
+    private ContractRequestType contractRequestType = ContractRequestType.NONE;
+
     @Builder.Default
     @Column(name = "memo", columnDefinition = "TEXT")
     private String memo = "";
@@ -71,6 +84,11 @@ public class ShopArtistContract extends BaseTimeEntity {
         this.recentInboundConfirmed = false;
         this.recentInboundConfirmedAt = null;
         this.recentInboundConfirmedByUserId = null;
+    }
+
+    public void terminate() {
+        this.contractStatus = ContractStatus.TERMINATED;
+        this.contractRequestType = ContractRequestType.NONE;
     }
 
     public void confirmRecentInbound(Long confirmedByUserId, LocalDateTime confirmedAt) {
