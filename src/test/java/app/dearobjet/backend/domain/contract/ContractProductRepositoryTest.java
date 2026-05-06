@@ -36,6 +36,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -60,6 +61,8 @@ class ContractProductRepositoryTest {
     private static final BigDecimal DEFAULT_COMMISSION_VALUE = new BigDecimal("20.0000");
     private static final BigDecimal CUP_MARGIN_AMOUNT = new BigDecimal("2400.00");
     private static final BigDecimal CUP_UNIT_SETTLEMENT_AMOUNT = new BigDecimal("9600.00");
+    private static final LocalDate CONTRACT_START_DATE = LocalDate.of(2026, 5, 1);
+    private static final LocalDate CONTRACT_END_DATE = LocalDate.of(2026, 12, 31);
     private static final LocalDateTime CUP_INBOUND_AT = LocalDateTime.of(2026, 4, 28, 10, 0);
     private static final LocalDateTime CUP_SALE_AT = LocalDateTime.of(2026, 4, 28, 12, 0);
     private static final LocalDateTime PLATE_INBOUND_AT = LocalDateTime.of(2026, 4, 27, 14, 30);
@@ -145,6 +148,126 @@ class ContractProductRepositoryTest {
         assertThat(plateRow.getTotalQuantity()).isEqualTo((long) PLATE_INBOUND_QUANTITY);
         assertThat(plateRow.getStockQuantity()).isEqualTo(PLATE_INBOUND_QUANTITY - PLATE_SALE_QUANTITY);
         assertThat(plateRow.getRecentStockedAt()).isEqualTo(PLATE_INBOUND_AT);
+    }
+
+    @Test
+    @DisplayName("입점관리 작가 목록은 대기, 승인, 만료 계약만 반환한다")
+    void givenManagedContracts_whenQueryByShop_thenReturnPendingApprovedEndedOnly() {
+        User shopUser = createUser(
+                "managed-shop@test.com",
+                "입점관리 소품샵",
+                Role.SHOP,
+                "01091000001",
+                "https://image.test/managed-shop.png"
+        );
+        Shop shop = createShop(shopUser, "입점관리 테스트 소품샵", Specialty.LIVING_GOODS);
+        Artist pendingArtist = createArtist(
+                createUser("managed-pending@test.com", "대기 작가", Role.ARTIST, "01091000002", null),
+                "대기 작가",
+                Specialty.CERAMIC
+        );
+        Artist approvedArtist = createArtist(
+                createUser("managed-approved@test.com", "계약 작가", Role.ARTIST, "01091000003", null),
+                "계약 작가",
+                Specialty.HANDMADE_CRAFT
+        );
+        Artist endedArtist = createArtist(
+                createUser("managed-ended@test.com", "만료 작가", Role.ARTIST, "01091000004", null),
+                "만료 작가",
+                Specialty.FABRIC_TEXTILE
+        );
+        Artist rejectedArtist = createArtist(
+                createUser("managed-rejected@test.com", "거절 작가", Role.ARTIST, "01091000005", null),
+                "거절 작가",
+                Specialty.INTERIOR_DECOR
+        );
+
+        ShopArtistContract pendingContract = createContract(
+                pendingArtist,
+                shop,
+                ContractStatus.PENDING,
+                null,
+                null
+        );
+        ShopArtistContract approvedContract = createContract(
+                approvedArtist,
+                shop,
+                ContractStatus.APPROVED,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        ShopArtistContract endedContract = createContract(
+                endedArtist,
+                shop,
+                ContractStatus.ENDED,
+                CONTRACT_START_DATE.minusYears(1),
+                CONTRACT_END_DATE.minusYears(1)
+        );
+        createContract(rejectedArtist, shop, ContractStatus.REJECTED, null, null);
+        flushAndClear();
+
+        var rows = contractRepository.findManagedArtistRowsByShopId(
+                shop.getShopId(),
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                ContractStatus.ENDED
+        );
+
+        assertThat(rows).hasSize(3);
+        assertThat(rows).extracting("contractId")
+                .containsExactly(
+                        pendingContract.getShopArtistContractsId(),
+                        approvedContract.getShopArtistContractsId(),
+                        endedContract.getShopArtistContractsId()
+                );
+        assertThat(findManagedArtistRow(rows, "계약 작가").getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
+        assertThat(findManagedArtistRow(rows, "계약 작가").getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
+        assertThat(findManagedArtistRow(rows, "계약 작가").getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("입점관리 계약서 상세는 해당 소품샵 계약만 조회한다")
+    void givenManagedContract_whenQueryDetailByShop_thenReturnOwnedContract() {
+        User shopUser = createUser(
+                "managed-detail-shop@test.com",
+                "상세 소품샵",
+                Role.SHOP,
+                "01092000001",
+                "https://image.test/detail-shop.png"
+        );
+        Shop shop = createShop(shopUser, "상세 테스트 소품샵", Specialty.LIVING_GOODS);
+        Artist artist = createArtist(
+                createUser("managed-detail-artist@test.com", "상세 작가", Role.ARTIST, "01092000002", null),
+                "상세 작가",
+                Specialty.CERAMIC
+        );
+        ShopArtistContract contract = createContract(
+                artist,
+                shop,
+                ContractStatus.APPROVED,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        flushAndClear();
+
+        var found = contractRepository.findManagedArtistContractByIdAndShopId(
+                contract.getShopArtistContractsId(),
+                shop.getShopId(),
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        );
+        var notOwned = contractRepository.findManagedArtistContractByIdAndShopId(
+                contract.getShopArtistContractsId(),
+                shop.getShopId() + 1,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        );
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getArtist().getBusinessProfile().getBusinessName()).isEqualTo("상세 작가");
+        assertThat(found.get().getShop().getBusinessName()).isEqualTo("상세 테스트 소품샵");
+        assertThat(found.get().getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
+        assertThat(found.get().getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
+        assertThat(notOwned).isEmpty();
     }
 
     private InventoryFixture createInventoryFixture() {
@@ -290,10 +413,22 @@ class ContractProductRepositoryTest {
     }
 
     private ShopArtistContract createContract(Artist artist, Shop shop) {
+        return createContract(artist, shop, ContractStatus.APPROVED, null, null);
+    }
+
+    private ShopArtistContract createContract(
+            Artist artist,
+            Shop shop,
+            ContractStatus contractStatus,
+            LocalDate contractStartDate,
+            LocalDate contractEndDate
+    ) {
         ShopArtistContract contract = ShopArtistContract.builder()
                 .artist(artist)
                 .shop(shop)
-                .contractStatus(ContractStatus.APPROVED)
+                .contractStatus(contractStatus)
+                .contractStartDate(contractStartDate)
+                .contractEndDate(contractEndDate)
                 .commissionType(CommissionType.RATE)
                 .commissionValue(DEFAULT_COMMISSION_VALUE)
                 .build();
@@ -345,6 +480,16 @@ class ContractProductRepositoryTest {
     ) {
         return rows.stream()
                 .filter(row -> productName.equals(row.getProductName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow findManagedArtistRow(
+            List<app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow> rows,
+            String artistName
+    ) {
+        return rows.stream()
+                .filter(row -> artistName.equals(row.getArtistName()))
                 .findFirst()
                 .orElseThrow();
     }

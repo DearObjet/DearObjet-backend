@@ -5,8 +5,11 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
@@ -17,9 +20,12 @@ import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.contract.repository.ContractProductRepository;
 import app.dearobjet.backend.domain.contract.repository.ContractProductStockMovementRepository;
 import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.artist.entity.Artist;
+import app.dearobjet.backend.domain.user.entity.BusinessProfile;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
+import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,11 +36,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -46,6 +54,9 @@ class ContractServiceTest {
     private static final Long SHOP_ID = 10L;
     private static final Long CONTRACT_ID = 50L;
     private static final Long CONTRACT_PRODUCT_ID = 100L;
+    private static final Long ARTIST_ID = 20L;
+    private static final LocalDate CONTRACT_START_DATE = LocalDate.of(2026, 5, 1);
+    private static final LocalDate CONTRACT_END_DATE = LocalDate.of(2026, 12, 31);
     private static final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 4, 28, 16, 0);
     private static final String UPDATED_MEMO = "Postman에서 수정한 계약 작가 메모";
 
@@ -83,6 +94,79 @@ class ContractServiceTest {
         assertThat(response.getItems().get(0).getContractId()).isEqualTo(CONTRACT_ID);
         assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 도자기 작가");
         assertThat(response.getItems().get(0).getInboundConfirmed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("입점관리 작가 목록에서 계약 대기, 계약중, 계약 만료 작가를 조회한다")
+    void givenManagedContracts_whenGetManagedArtists_thenReturnArtistRowsWithNextAction() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistRowsByShopId(
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                ContractStatus.ENDED
+        )).willReturn(List.of(
+                managedArtistRow(1L, ContractStatus.PENDING, "대기 작가"),
+                managedArtistRow(2L, ContractStatus.APPROVED, "계약 작가"),
+                managedArtistRow(3L, ContractStatus.ENDED, "만료 작가")
+        ));
+
+        ManagedArtistContractListResponse response = contractService.getManagedArtists(USER_ID);
+
+        assertThat(response.getItems()).hasSize(3);
+        assertThat(response.getItems().get(0).getContractStatusLabel()).isEqualTo("계약 대기");
+        assertThat(response.getItems().get(0).getNextAction().getCode()).isEqualTo("CONTRACT_APPROVE");
+        assertThat(response.getItems().get(1).getContractStatusLabel()).isEqualTo("계약중");
+        assertThat(response.getItems().get(1).getNextAction().getCode()).isEqualTo("RELEASE_APPROVE");
+        assertThat(response.getItems().get(2).getContractStatusLabel()).isEqualTo("계약 만료");
+        assertThat(response.getItems().get(2).getNextAction().getCode()).isEqualTo("CONTRACTING");
+        assertThat(response.getItems().get(2).getDetailAvailable()).isTrue();
+    }
+
+    @Test
+    @DisplayName("입점관리 계약서 상세를 조회한다")
+    void givenOwnedManagedContract_whenGetManagedArtistContract_thenReturnDetail() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = contractWithArtistAndShop(CONTRACT_ID, ContractStatus.APPROVED);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.of(contract));
+
+        ManagedArtistContractDetailResponse response =
+                contractService.getManagedArtistContract(USER_ID, CONTRACT_ID);
+
+        assertThat(response.getContractId()).isEqualTo(CONTRACT_ID);
+        assertThat(response.getShopId()).isEqualTo(SHOP_ID);
+        assertThat(response.getShopName()).isEqualTo("Postman 테스트 소품샵");
+        assertThat(response.getArtistId()).isEqualTo(ARTIST_ID);
+        assertThat(response.getArtistName()).isEqualTo("Postman 도자기 작가");
+        assertThat(response.getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
+        assertThat(response.getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
+        assertThat(response.getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("입점관리 계약서 상세가 해당 소품샵 소유가 아니면 예외를 던진다")
+    void givenNotOwnedManagedContract_whenGetManagedArtistContract_thenThrowException() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> contractService.getManagedArtistContract(USER_ID, CONTRACT_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("계약서 정보를 찾을 수 없습니다.");
     }
 
     @Test
@@ -188,13 +272,55 @@ class ContractServiceTest {
         };
     }
 
+    private ManagedArtistContractRow managedArtistRow(
+            Long contractId,
+            ContractStatus contractStatus,
+            String artistName
+    ) {
+        return new ManagedArtistContractRow() {
+            @Override
+            public Long getContractId() {
+                return contractId;
+            }
+
+            @Override
+            public Long getArtistId() {
+                return ARTIST_ID + contractId;
+            }
+
+            @Override
+            public String getArtistName() {
+                return artistName;
+            }
+
+            @Override
+            public LocalDate getContractStartDate() {
+                return CONTRACT_START_DATE;
+            }
+
+            @Override
+            public LocalDate getContractEndDate() {
+                return CONTRACT_END_DATE;
+            }
+
+            @Override
+            public ContractStatus getContractStatus() {
+                return contractStatus;
+            }
+        };
+    }
+
     private Shop shopWithId(Long shopId) {
         User user = User.builder()
                 .id(USER_ID)
                 .build();
+        BusinessProfile businessProfile = BusinessProfile.builder()
+                .businessName("Postman 테스트 소품샵")
+                .build();
         return Shop.builder()
                 .shopId(shopId)
                 .user(user)
+                .businessProfile(businessProfile)
                 .build();
     }
 
@@ -217,6 +343,33 @@ class ContractServiceTest {
                 .contractStatus(ContractStatus.APPROVED)
                 .commissionType(CommissionType.RATE)
                 .commissionValue(new BigDecimal("20.0000"))
+                .build();
+    }
+
+    private ShopArtistContract contractWithArtistAndShop(Long contractId, ContractStatus contractStatus) {
+        User artistUser = User.builder()
+                .id(ARTIST_ID)
+                .name("Postman 작가 A")
+                .build();
+        BusinessProfile artistBusinessProfile = BusinessProfile.builder()
+                .businessName("Postman 도자기 작가")
+                .build();
+        Artist artist = Artist.builder()
+                .id(ARTIST_ID)
+                .user(artistUser)
+                .businessProfile(artistBusinessProfile)
+                .build();
+
+        return ShopArtistContract.builder()
+                .shopArtistContractsId(contractId)
+                .artist(artist)
+                .shop(shopWithId(SHOP_ID))
+                .contractStatus(contractStatus)
+                .contractStartDate(CONTRACT_START_DATE)
+                .contractEndDate(CONTRACT_END_DATE)
+                .commissionType(CommissionType.RATE)
+                .commissionValue(new BigDecimal("20.0000"))
+                .memo("계약서 테스트 메모")
                 .build();
     }
 
