@@ -5,6 +5,7 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
@@ -14,6 +15,7 @@ import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
@@ -26,6 +28,7 @@ import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
+import app.dearobjet.backend.global.exception.InvalidInputException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -109,21 +112,31 @@ class ContractServiceTest {
                 ContractStatus.APPROVED,
                 ContractStatus.ENDED
         )).willReturn(List.of(
-                managedArtistRow(1L, ContractStatus.PENDING, "대기 작가"),
-                managedArtistRow(2L, ContractStatus.APPROVED, "계약 작가"),
-                managedArtistRow(3L, ContractStatus.ENDED, "만료 작가")
+                managedArtistRow(1L, ContractStatus.PENDING, ContractRequestType.EXTENSION, "연장 대기 작가"),
+                managedArtistRow(2L, ContractStatus.PENDING, ContractRequestType.RELEASE, "해제 대기 작가"),
+                managedArtistRow(3L, ContractStatus.APPROVED, ContractRequestType.NONE, "계약 작가"),
+                managedArtistRow(
+                        4L,
+                        ContractStatus.APPROVED,
+                        ContractRequestType.NONE,
+                        "해지 가능 작가",
+                        LocalDate.now().minusDays(14)
+                )
         ));
 
         ManagedArtistContractListResponse response = contractService.getManagedArtists(USER_ID);
 
-        assertThat(response.getItems()).hasSize(3);
+        assertThat(response.getItems()).hasSize(4);
         assertThat(response.getItems().get(0).getContractStatusLabel()).isEqualTo("계약 대기");
         assertThat(response.getItems().get(0).getNextAction().getCode()).isEqualTo("CONTRACT_APPROVE");
-        assertThat(response.getItems().get(1).getContractStatusLabel()).isEqualTo("계약중");
+        assertThat(response.getItems().get(1).getContractStatusLabel()).isEqualTo("계약 대기");
         assertThat(response.getItems().get(1).getNextAction().getCode()).isEqualTo("RELEASE_APPROVE");
-        assertThat(response.getItems().get(2).getContractStatusLabel()).isEqualTo("계약 만료");
-        assertThat(response.getItems().get(2).getNextAction().getCode()).isEqualTo("CONTRACTING");
-        assertThat(response.getItems().get(2).getDetailAvailable()).isTrue();
+        assertThat(response.getItems().get(2).getContractStatusLabel()).isEqualTo("계약중");
+        assertThat(response.getItems().get(2).getNextAction().getCode()).isEqualTo("NONE");
+        assertThat(response.getItems().get(3).getContractStatus()).isEqualTo(ContractStatus.ENDED);
+        assertThat(response.getItems().get(3).getContractStatusLabel()).isEqualTo("계약 만료");
+        assertThat(response.getItems().get(3).getNextAction().getCode()).isEqualTo("TERMINATE_CONTRACT");
+        assertThat(response.getItems().get(3).getDetailAvailable()).isTrue();
     }
 
     @Test
@@ -150,6 +163,7 @@ class ContractServiceTest {
         assertThat(response.getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
         assertThat(response.getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
         assertThat(response.getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+        assertThat(response.getContractRequestType()).isEqualTo(ContractRequestType.NONE);
     }
 
     @Test
@@ -167,6 +181,84 @@ class ContractServiceTest {
         assertThatThrownBy(() -> contractService.getManagedArtistContract(USER_ID, CONTRACT_ID))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("계약서 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("작가 해제 신청 계약을 해지 처리한다")
+    void givenReleaseRequestedContract_whenTerminateManagedArtistContract_thenChangeStatusToTerminated() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = contractWithArtistAndShop(
+                CONTRACT_ID,
+                ContractStatus.PENDING,
+                ContractRequestType.RELEASE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.of(contract));
+
+        ContractTerminationResponse response =
+                contractService.terminateManagedArtistContract(USER_ID, CONTRACT_ID);
+
+        assertThat(response.getContractId()).isEqualTo(CONTRACT_ID);
+        assertThat(response.getContractStatus()).isEqualTo(ContractStatus.TERMINATED);
+        assertThat(contract.getContractStatus()).isEqualTo(ContractStatus.TERMINATED);
+        assertThat(contract.getContractRequestType()).isEqualTo(ContractRequestType.NONE);
+    }
+
+    @Test
+    @DisplayName("계약 종료일 14일 이후 계약을 해지 처리한다")
+    void givenExpiredContractAfterGracePeriod_whenTerminateManagedArtistContract_thenChangeStatusToTerminated() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = contractWithArtistAndShop(
+                CONTRACT_ID,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                LocalDate.now().minusDays(14)
+        );
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.of(contract));
+
+        ContractTerminationResponse response =
+                contractService.terminateManagedArtistContract(USER_ID, CONTRACT_ID);
+
+        assertThat(response.getContractStatus()).isEqualTo(ContractStatus.TERMINATED);
+        assertThat(contract.getContractStatus()).isEqualTo(ContractStatus.TERMINATED);
+    }
+
+    @Test
+    @DisplayName("해지 조건이 아닌 계약은 해지 처리할 수 없다")
+    void givenNotTerminableContract_whenTerminateManagedArtistContract_thenThrowException() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = contractWithArtistAndShop(
+                CONTRACT_ID,
+                ContractStatus.PENDING,
+                ContractRequestType.EXTENSION,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.terminateManagedArtistContract(USER_ID, CONTRACT_ID))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("해지 승인 또는 계약해지가 가능한 계약이 아닙니다.");
     }
 
     @Test
@@ -275,7 +367,18 @@ class ContractServiceTest {
     private ManagedArtistContractRow managedArtistRow(
             Long contractId,
             ContractStatus contractStatus,
+            ContractRequestType requestType,
             String artistName
+    ) {
+        return managedArtistRow(contractId, contractStatus, requestType, artistName, CONTRACT_END_DATE);
+    }
+
+    private ManagedArtistContractRow managedArtistRow(
+            Long contractId,
+            ContractStatus contractStatus,
+            ContractRequestType requestType,
+            String artistName,
+            LocalDate contractEndDate
     ) {
         return new ManagedArtistContractRow() {
             @Override
@@ -300,12 +403,17 @@ class ContractServiceTest {
 
             @Override
             public LocalDate getContractEndDate() {
-                return CONTRACT_END_DATE;
+                return contractEndDate;
             }
 
             @Override
             public ContractStatus getContractStatus() {
                 return contractStatus;
+            }
+
+            @Override
+            public ContractRequestType getContractRequestType() {
+                return requestType;
             }
         };
     }
@@ -347,6 +455,22 @@ class ContractServiceTest {
     }
 
     private ShopArtistContract contractWithArtistAndShop(Long contractId, ContractStatus contractStatus) {
+        return contractWithArtistAndShop(
+                contractId,
+                contractStatus,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+    }
+
+    private ShopArtistContract contractWithArtistAndShop(
+            Long contractId,
+            ContractStatus contractStatus,
+            ContractRequestType contractRequestType,
+            LocalDate contractStartDate,
+            LocalDate contractEndDate
+    ) {
         User artistUser = User.builder()
                 .id(ARTIST_ID)
                 .name("Postman 작가 A")
@@ -365,8 +489,9 @@ class ContractServiceTest {
                 .artist(artist)
                 .shop(shopWithId(SHOP_ID))
                 .contractStatus(contractStatus)
-                .contractStartDate(CONTRACT_START_DATE)
-                .contractEndDate(CONTRACT_END_DATE)
+                .contractRequestType(contractRequestType)
+                .contractStartDate(contractStartDate)
+                .contractEndDate(contractEndDate)
                 .commissionType(CommissionType.RATE)
                 .commissionValue(new BigDecimal("20.0000"))
                 .memo("계약서 테스트 메모")

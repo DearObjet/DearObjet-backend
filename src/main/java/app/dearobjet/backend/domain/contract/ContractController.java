@@ -7,6 +7,7 @@ import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
@@ -55,6 +56,20 @@ public class ContractController {
     ) {
         return ApiResponse.of(
                 contractService.getManagedArtistContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
+
+    @PatchMapping("/artists/{contractId}/termination")
+    public ApiResponse<ContractTerminationResponse> terminateManagedArtistContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.terminateManagedArtistContract(
                         resolveUserId(userDetails, userId),
                         contractId
                 )

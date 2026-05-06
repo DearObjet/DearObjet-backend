@@ -83,7 +83,8 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
                    bp.businessName as artistName,
                    c.contractStartDate as contractStartDate,
                    c.contractEndDate as contractEndDate,
-                   c.contractStatus as contractStatus
+                   c.contractStatus as contractStatus,
+                   c.contractRequestType as contractRequestType
             from ShopArtistContract c
             join c.artist a
             join a.businessProfile bp

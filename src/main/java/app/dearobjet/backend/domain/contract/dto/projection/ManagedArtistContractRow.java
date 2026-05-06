@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.contract.dto.projection;
 
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
+import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 
 import java.time.LocalDate;
 
@@ -11,4 +12,5 @@ public interface ManagedArtistContractRow {
     LocalDate getContractStartDate();
     LocalDate getContractEndDate();
     ContractStatus getContractStatus();
+    ContractRequestType getContractRequestType();
 }
