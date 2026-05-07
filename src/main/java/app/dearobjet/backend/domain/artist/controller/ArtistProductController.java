@@ -1,6 +1,9 @@
 package app.dearobjet.backend.domain.artist.controller;
 
+import app.dearobjet.backend.domain.artist.dto.ArtistProductItemResponse;
 import app.dearobjet.backend.domain.artist.dto.ArtistProductListResponse;
+import app.dearobjet.backend.domain.artist.dto.CreateArtistProductRequest;
+import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockResponse;
 import app.dearobjet.backend.domain.artist.service.ArtistProductService;
@@ -8,15 +11,20 @@ import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -24,6 +32,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArtistProductController {
 
     private final ArtistProductService artistProductService;
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ArtistProductItemResponse> createProduct(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @Valid @RequestPart("request") CreateArtistProductRequest request,
+            @RequestPart("productImage") MultipartFile productImage
+    ) {
+        return ApiResponse.of(
+                artistProductService.createProduct(resolveUserId(userDetails, userId), request, productImage)
+        );
+    }
 
     @GetMapping
     public ApiResponse<ArtistProductListResponse> getProducts(
@@ -42,6 +62,24 @@ public class ArtistProductController {
             @Valid @RequestBody UpdateArtistProductStockRequest request
     ) {
         return ApiResponse.of(artistProductService.updateStocks(resolveUserId(userDetails, userId), request));
+    }
+
+    @PutMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ArtistProductItemResponse> updateProduct(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long productId,
+            @Valid @RequestPart("request") UpdateArtistProductRequest request,
+            @RequestPart(value = "productImage", required = false) MultipartFile productImage
+    ) {
+        return ApiResponse.of(
+                artistProductService.updateProduct(
+                        resolveUserId(userDetails, userId),
+                        productId,
+                        request,
+                        productImage
+                )
+        );
     }
 
     @DeleteMapping("/{productId}")

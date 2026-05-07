@@ -24,6 +24,7 @@ import java.util.Objects;
 public class Product extends BaseTimeEntity {
 
     private static final int MIN_STOCK_QUANTITY = 0;
+    private static final BigDecimal MIN_PRICE = BigDecimal.ZERO;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,6 +57,46 @@ public class Product extends BaseTimeEntity {
     @Column(name = "version")
     private Long version;
 
+    public static Product create(
+            Artist artist,
+            String productName,
+            BigDecimal price,
+            int stockQuantity,
+            String productUrl
+    ) {
+        Product product = Product.builder()
+                .artist(artist)
+                .status(ProductStatus.ACTIVE)
+                .build();
+        product.updateProductInfo(productName, price, stockQuantity, productUrl);
+        return product;
+    }
+
+    public void updateProductInfo(
+            String productName,
+            BigDecimal price,
+            int stockQuantity,
+            String productUrl
+    ) {
+        validateProductName(productName);
+        validatePrice(price);
+        validateStockQuantity(stockQuantity);
+        validateProductUrl(productUrl);
+
+        this.productName = productName.trim();
+        this.price = price;
+        this.stockQuantity = stockQuantity;
+        this.productUrl = productUrl;
+    }
+
+    public void updateProductInfoKeepingImage(
+            String productName,
+            BigDecimal price,
+            int stockQuantity
+    ) {
+        updateProductInfo(productName, price, stockQuantity, this.productUrl);
+    }
+
     public void updateStockQuantity(int stockQuantity, Long expectedVersion) {
         validateStockQuantity(stockQuantity);
         validateVersion(expectedVersion);
@@ -70,6 +111,24 @@ public class Product extends BaseTimeEntity {
     private void validateStockQuantity(int stockQuantity) {
         if (stockQuantity < MIN_STOCK_QUANTITY) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT, "재고 수량은 0 이상이어야 합니다.");
+        }
+    }
+
+    private void validateProductName(String productName) {
+        if (productName == null || productName.isBlank()) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "상품명은 필수입니다.");
+        }
+    }
+
+    private void validatePrice(BigDecimal price) {
+        if (price == null || price.compareTo(MIN_PRICE) < 0) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "판매가는 0 이상이어야 합니다.");
+        }
+    }
+
+    private void validateProductUrl(String productUrl) {
+        if (productUrl == null || productUrl.isBlank()) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "상품 이미지는 필수입니다.");
         }
     }
 

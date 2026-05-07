@@ -97,6 +97,34 @@ public class S3FileUploadService {
         }
     }
 
+    public String uploadProductImage(MultipartFile file, Long userId) {
+        validateImageFile(file, "상품 이미지 파일", MAX_IMAGE_FILE_SIZE_BYTES);
+
+        String key = buildProductImageKey(userId, file.getOriginalFilename());
+        String contentType = file.getContentType();
+
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
+            return buildPublicUrl(key);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 읽기에 실패했습니다.");
+        } catch (S3Exception e) {
+            String detailMessage = e.awsErrorDetails() == null
+                    ? e.getMessage()
+                    : e.awsErrorDetails().errorCode() + ": " + e.awsErrorDetails().errorMessage();
+            throw new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "S3 업로드에 실패했습니다. " + detailMessage
+            );
+        }
+    }
+
     public String uploadProfileImage(MultipartFile file, Long userId) {
         validateImageFile(file, "프로필 이미지 파일", MAX_IMAGE_FILE_SIZE_BYTES);
 
@@ -203,6 +231,11 @@ public class S3FileUploadService {
     private String buildClassImageKey(Long userId, String originalFilename) {
         String extension = extractExtension(originalFilename);
         return "class-image/" + userId + "/" + UUID.randomUUID() + extension;
+    }
+
+    private String buildProductImageKey(Long userId, String originalFilename) {
+        String extension = extractExtension(originalFilename);
+        return "product-image/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
     private String buildProfileImageKey(Long userId, String originalFilename) {
