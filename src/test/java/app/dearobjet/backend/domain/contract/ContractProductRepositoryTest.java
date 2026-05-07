@@ -5,6 +5,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchR
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
@@ -536,6 +537,134 @@ class ContractProductRepositoryTest {
                 .isEqualTo(eligibleArtist.getId());
     }
 
+    @Test
+    @DisplayName("입점처 목록은 작가 소유 계약과 해지 후 14일 이내 계약만 반환한다")
+    void givenArtistContracts_whenQueryManagedShops_thenReturnOwnedVisibleContractsOnly() {
+        LocalDateTime now = LocalDateTime.of(2026, 5, 7, 10, 0);
+        User artistUser = createUser(
+                "managed-shop-list-artist@test.com",
+                "입점처 목록 작가",
+                Role.ARTIST,
+                "01096000001",
+                null
+        );
+        User otherArtistUser = createUser(
+                "managed-shop-list-other-artist@test.com",
+                "다른 입점처 목록 작가",
+                Role.ARTIST,
+                "01096000002",
+                null
+        );
+        Artist artist = createArtist(artistUser, "입점처 목록 작가", Specialty.CERAMIC);
+        Artist otherArtist = createArtist(otherArtistUser, "다른 입점처 목록 작가", Specialty.HANDMADE_CRAFT);
+
+        Shop pendingShop = createShop(
+                createUser("managed-shop-list-pending@test.com", "대기 소품샵", Role.SHOP, "01096000003", null),
+                "대기 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop approvedShop = createShop(
+                createUser("managed-shop-list-approved@test.com", "완료 소품샵", Role.SHOP, "01096000004", null),
+                "완료 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop endedShop = createShop(
+                createUser("managed-shop-list-ended@test.com", "연장 소품샵", Role.SHOP, "01096000005", null),
+                "연장 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop terminatedRecentShop = createShop(
+                createUser("managed-shop-list-terminated-recent@test.com", "최근 만료 소품샵", Role.SHOP, "01096000006", null),
+                "최근 만료 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop terminatedOldShop = createShop(
+                createUser("managed-shop-list-terminated-old@test.com", "오래된 만료 소품샵", Role.SHOP, "01096000007", null),
+                "오래된 만료 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop rejectedShop = createShop(
+                createUser("managed-shop-list-rejected@test.com", "거절 소품샵", Role.SHOP, "01096000008", null),
+                "거절 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop otherArtistShop = createShop(
+                createUser("managed-shop-list-other-owner@test.com", "타 작가 소품샵", Role.SHOP, "01096000009", null),
+                "타 작가 소품샵",
+                Specialty.LIVING_GOODS
+        );
+
+        ShopArtistContract pendingContract = createContract(
+                artist,
+                pendingShop,
+                ContractStatus.PENDING,
+                ContractRequestType.EXTENSION,
+                null,
+                null
+        );
+        ShopArtistContract approvedContract = createContract(
+                artist,
+                approvedShop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        ShopArtistContract endedContract = createContract(
+                artist,
+                endedShop,
+                ContractStatus.ENDED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE.minusYears(1),
+                CONTRACT_END_DATE.minusYears(1)
+        );
+        ShopArtistContract terminatedRecentContract = createContract(
+                artist,
+                terminatedRecentShop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE.minusYears(1),
+                CONTRACT_END_DATE.minusYears(1)
+        );
+        terminatedRecentContract.terminate(now.minusDays(13));
+        ShopArtistContract terminatedOldContract = createContract(
+                artist,
+                terminatedOldShop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE.minusYears(1),
+                CONTRACT_END_DATE.minusYears(1)
+        );
+        terminatedOldContract.terminate(now.minusDays(15));
+        createContract(artist, rejectedShop, ContractStatus.REJECTED, ContractRequestType.NONE, null, null);
+        createContract(otherArtist, otherArtistShop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        flushAndClear();
+
+        List<ManagedShopContractRow> rows = contractRepository.findManagedShopRowsByArtistId(
+                artist.getId(),
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                ContractStatus.TERMINATED,
+                now.minusDays(14),
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                ContractStatus.ENDED
+        );
+
+        assertThat(rows).extracting("contractId")
+                .contains(
+                        pendingContract.getShopArtistContractsId(),
+                        approvedContract.getShopArtistContractsId(),
+                        endedContract.getShopArtistContractsId(),
+                        terminatedRecentContract.getShopArtistContractsId()
+                )
+                .doesNotContain(terminatedOldContract.getShopArtistContractsId());
+        assertThat(rows).extracting("shopName")
+                .contains("대기 소품샵", "완료 소품샵", "연장 소품샵", "최근 만료 소품샵")
+                .doesNotContain("오래된 만료 소품샵", "거절 소품샵", "타 작가 소품샵");
+        assertThat(findManagedShopRow(rows, "최근 만료 소품샵").getTerminatedAt())
+                .isEqualTo(now.minusDays(13));
+    }
+
     private InventoryFixture createInventoryFixture() {
         User shopUser = createUser(
                 "postman-shop@test.com",
@@ -782,6 +911,13 @@ class ContractProductRepositoryTest {
     private ArtistAccountSearchRow findAccountSearchRow(List<ArtistAccountSearchRow> rows, String artistName) {
         return rows.stream()
                 .filter(row -> artistName.equals(row.getArtistName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ManagedShopContractRow findManagedShopRow(List<ManagedShopContractRow> rows, String shopName) {
+        return rows.stream()
+                .filter(row -> shopName.equals(row.getShopName()))
                 .findFirst()
                 .orElseThrow();
     }

@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchR
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
@@ -16,6 +17,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface ContractRepository extends JpaRepository<ShopArtistContract, Long> {
 
@@ -126,6 +128,85 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             @Param("contractId") Long contractId,
             @Param("shopId") Long shopId,
             @Param("contractStatuses") List<ContractStatus> contractStatuses
+    );
+
+    @Query("""
+            select c.shopArtistContractsId as contractId,
+                   s.shopId as shopId,
+                   bp.businessName as shopName,
+                   c.contractStartDate as contractStartDate,
+                   c.contractEndDate as contractEndDate,
+                   c.contractStatus as contractStatus,
+                   c.contractRequestType as contractRequestType,
+                   c.terminatedAt as terminatedAt
+            from ShopArtistContract c
+            join c.shop s
+            join s.businessProfile bp
+            where c.artist.id = :artistId
+              and (
+                  c.contractStatus in :contractStatuses
+                  or (
+                      c.contractStatus = :terminatedStatus
+                      and (c.terminatedAt is null or c.terminatedAt > :terminatedVisibleAfter)
+                  )
+              )
+            order by case
+                        when c.contractStatus = :pendingStatus then 0
+                        when c.contractStatus = :approvedStatus then 1
+                        when c.contractStatus = :endedStatus then 2
+                        when c.contractStatus = :terminatedStatus then 3
+                        else 4
+                     end,
+                     c.shopArtistContractsId desc
+            """)
+    List<ManagedShopContractRow> findManagedShopRowsByArtistId(
+            @Param("artistId") Long artistId,
+            @Param("contractStatuses") List<ContractStatus> contractStatuses,
+            @Param("terminatedStatus") ContractStatus terminatedStatus,
+            @Param("terminatedVisibleAfter") LocalDateTime terminatedVisibleAfter,
+            @Param("pendingStatus") ContractStatus pendingStatus,
+            @Param("approvedStatus") ContractStatus approvedStatus,
+            @Param("endedStatus") ContractStatus endedStatus
+    );
+
+    @Query("""
+            select c
+            from ShopArtistContract c
+            join fetch c.artist a
+            join fetch a.businessProfile
+            join fetch c.shop s
+            join fetch s.businessProfile
+            where c.shopArtistContractsId = :contractId
+              and c.artist.id = :artistId
+              and (
+                  c.contractStatus in :contractStatuses
+                  or (
+                      c.contractStatus = :terminatedStatus
+                      and (c.terminatedAt is null or c.terminatedAt > :terminatedVisibleAfter)
+                  )
+              )
+            """)
+    Optional<ShopArtistContract> findManagedShopContractByIdAndArtistId(
+            @Param("contractId") Long contractId,
+            @Param("artistId") Long artistId,
+            @Param("contractStatuses") List<ContractStatus> contractStatuses,
+            @Param("terminatedStatus") ContractStatus terminatedStatus,
+            @Param("terminatedVisibleAfter") LocalDateTime terminatedVisibleAfter
+    );
+
+    @Query("""
+            select c
+            from ShopArtistContract c
+            join fetch c.artist a
+            join fetch a.businessProfile
+            join fetch c.shop s
+            join fetch s.businessProfile
+            where c.shopArtistContractsId = :contractId
+              and c.artist.id = :artistId
+            """)
+    Optional<ShopArtistContract> findContractByIdAndArtistId(
+            @Param("contractId") Long contractId,
+            @Param("artistId") Long artistId
     );
 
     @Query("""
