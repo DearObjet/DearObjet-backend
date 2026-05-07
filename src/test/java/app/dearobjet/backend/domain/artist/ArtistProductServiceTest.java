@@ -1,7 +1,9 @@
 package app.dearobjet.backend.domain.artist;
 
 import app.dearobjet.backend.domain.artist.dto.ArtistProductListResponse;
+import app.dearobjet.backend.domain.artist.dto.ArtistProductMemoResponse;
 import app.dearobjet.backend.domain.artist.dto.CreateArtistProductRequest;
+import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductMemoRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockResponse;
@@ -54,6 +56,8 @@ class ArtistProductServiceTest {
     private static final BigDecimal UPDATED_PRICE = new BigDecimal("15000.00");
     private static final String PRODUCT_IMAGE_URL = "https://image.test/products/new.png";
     private static final String UPDATED_PRODUCT_IMAGE_URL = "https://image.test/products/updated.png";
+    private static final String PRODUCT_MEMO = "행사 진열용 메모";
+    private static final String UPDATED_PRODUCT_MEMO = "재입고 시 우선 확인";
 
     @InjectMocks
     private ArtistProductService artistProductService;
@@ -268,6 +272,122 @@ class ArtistProductServiceTest {
     }
 
     @Test
+    @DisplayName("상품 메모가 있으면 저장된 메모를 조회한다")
+    void givenProductMemo_whenGetProductMemo_thenReturnMemo() {
+        Artist artist = artist();
+        Product product = product(CUP_PRODUCT_ID, "도자기 컵", CUP_STOCK_QUANTITY, VERSION);
+        product.updateMemo(PRODUCT_MEMO);
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(productRepository.findByProductsIdAndArtistIdAndStatus(
+                CUP_PRODUCT_ID,
+                ARTIST_ID,
+                ProductStatus.ACTIVE
+        )).willReturn(Optional.of(product));
+
+        ArtistProductMemoResponse response = artistProductService.getProductMemo(USER_ID, CUP_PRODUCT_ID);
+
+        assertThat(response.getProductId()).isEqualTo(CUP_PRODUCT_ID);
+        assertThat(response.getMemo()).isEqualTo(PRODUCT_MEMO);
+    }
+
+    @Test
+    @DisplayName("상품 메모가 없으면 빈 문자열을 조회한다")
+    void givenProductWithoutMemo_whenGetProductMemo_thenReturnEmptyMemo() {
+        Artist artist = artist();
+        Product product = product(CUP_PRODUCT_ID, "도자기 컵", CUP_STOCK_QUANTITY, VERSION);
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(productRepository.findByProductsIdAndArtistIdAndStatus(
+                CUP_PRODUCT_ID,
+                ARTIST_ID,
+                ProductStatus.ACTIVE
+        )).willReturn(Optional.of(product));
+
+        ArtistProductMemoResponse response = artistProductService.getProductMemo(USER_ID, CUP_PRODUCT_ID);
+
+        assertThat(response.getMemo()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("상품 메모를 저장하거나 수정한다")
+    void givenMemoRequest_whenUpdateProductMemo_thenReturnUpdatedMemo() {
+        Artist artist = artist();
+        Product product = product(CUP_PRODUCT_ID, "도자기 컵", CUP_STOCK_QUANTITY, VERSION);
+        UpdateArtistProductMemoRequest request = memoRequest(UPDATED_PRODUCT_MEMO);
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(productRepository.findByProductsIdAndArtistIdAndStatus(
+                CUP_PRODUCT_ID,
+                ARTIST_ID,
+                ProductStatus.ACTIVE
+        )).willReturn(Optional.of(product));
+
+        ArtistProductMemoResponse response = artistProductService.updateProductMemo(USER_ID, CUP_PRODUCT_ID, request);
+
+        assertThat(response.getMemo()).isEqualTo(UPDATED_PRODUCT_MEMO);
+        assertThat(product.getMemo()).isEqualTo(UPDATED_PRODUCT_MEMO);
+    }
+
+    @Test
+    @DisplayName("공백만 있는 상품 메모는 삭제와 동일하게 빈 문자열로 저장한다")
+    void givenBlankMemoRequest_whenUpdateProductMemo_thenSaveEmptyMemo() {
+        Artist artist = artist();
+        Product product = product(CUP_PRODUCT_ID, "도자기 컵", CUP_STOCK_QUANTITY, VERSION);
+        product.updateMemo(PRODUCT_MEMO);
+        UpdateArtistProductMemoRequest request = memoRequest("   ");
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(productRepository.findByProductsIdAndArtistIdAndStatus(
+                CUP_PRODUCT_ID,
+                ARTIST_ID,
+                ProductStatus.ACTIVE
+        )).willReturn(Optional.of(product));
+
+        ArtistProductMemoResponse response = artistProductService.updateProductMemo(USER_ID, CUP_PRODUCT_ID, request);
+
+        assertThat(response.getMemo()).isEmpty();
+        assertThat(product.getMemo()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("상품 메모를 삭제한다")
+    void givenProductMemo_whenDeleteProductMemo_thenReturnEmptyMemo() {
+        Artist artist = artist();
+        Product product = product(CUP_PRODUCT_ID, "도자기 컵", CUP_STOCK_QUANTITY, VERSION);
+        product.updateMemo(PRODUCT_MEMO);
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(productRepository.findByProductsIdAndArtistIdAndStatus(
+                CUP_PRODUCT_ID,
+                ARTIST_ID,
+                ProductStatus.ACTIVE
+        )).willReturn(Optional.of(product));
+
+        ArtistProductMemoResponse response = artistProductService.deleteProductMemo(USER_ID, CUP_PRODUCT_ID);
+
+        assertThat(response.getMemo()).isEmpty();
+        assertThat(product.getMemo()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("다른 작가 상품의 메모는 조회할 수 없다")
+    void givenNotOwnedProduct_whenGetProductMemo_thenThrowNotFound() {
+        Artist artist = artist();
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(productRepository.findByProductsIdAndArtistIdAndStatus(
+                CUP_PRODUCT_ID,
+                ARTIST_ID,
+                ProductStatus.ACTIVE
+        )).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> artistProductService.getProductMemo(USER_ID, CUP_PRODUCT_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("상품을 찾을 수 없습니다.");
+    }
+
+    @Test
     @DisplayName("작가 상품 삭제는 비활성화로 처리한다")
     void givenOwnedProduct_whenDeleteProduct_thenDeactivate() {
         Artist artist = artist();
@@ -339,6 +459,12 @@ class ArtistProductServiceTest {
     private UpdateArtistProductStockRequest stockRequest(UpdateArtistProductStockRequest.Item... items) {
         UpdateArtistProductStockRequest request = new UpdateArtistProductStockRequest();
         ReflectionTestUtils.setField(request, "items", List.of(items));
+        return request;
+    }
+
+    private UpdateArtistProductMemoRequest memoRequest(String memo) {
+        UpdateArtistProductMemoRequest request = new UpdateArtistProductMemoRequest();
+        ReflectionTestUtils.setField(request, "memo", memo);
         return request;
     }
 

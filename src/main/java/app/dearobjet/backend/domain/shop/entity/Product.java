@@ -53,6 +53,10 @@ public class Product extends BaseTimeEntity {
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity = MIN_STOCK_QUANTITY;
 
+    @Builder.Default
+    @Column(name = "memo", columnDefinition = "TEXT")
+    private String memo = "";
+
     @Version
     @Column(name = "version")
     private Long version;
@@ -102,6 +106,14 @@ public class Product extends BaseTimeEntity {
         validateVersion(expectedVersion);
 
         this.stockQuantity = stockQuantity;
+    }
+
+    public void updateMemo(String memo) {
+        if (memo == null || memo.isBlank()) {
+            this.memo = "";
+            return;
+        }
+        this.memo = memo.trim();
     }
 
     public void deactivate() {

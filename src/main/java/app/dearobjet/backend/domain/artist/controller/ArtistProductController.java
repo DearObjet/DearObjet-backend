@@ -2,7 +2,9 @@ package app.dearobjet.backend.domain.artist.controller;
 
 import app.dearobjet.backend.domain.artist.dto.ArtistProductItemResponse;
 import app.dearobjet.backend.domain.artist.dto.ArtistProductListResponse;
+import app.dearobjet.backend.domain.artist.dto.ArtistProductMemoResponse;
 import app.dearobjet.backend.domain.artist.dto.CreateArtistProductRequest;
+import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductMemoRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockResponse;
@@ -62,6 +64,40 @@ public class ArtistProductController {
             @Valid @RequestBody UpdateArtistProductStockRequest request
     ) {
         return ApiResponse.of(artistProductService.updateStocks(resolveUserId(userDetails, userId), request));
+    }
+
+    @GetMapping("/{productId}/memo")
+    public ApiResponse<ArtistProductMemoResponse> getProductMemo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long productId
+    ) {
+        return ApiResponse.of(
+                artistProductService.getProductMemo(resolveUserId(userDetails, userId), productId)
+        );
+    }
+
+    @PatchMapping("/{productId}/memo")
+    public ApiResponse<ArtistProductMemoResponse> updateProductMemo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long productId,
+            @Valid @RequestBody UpdateArtistProductMemoRequest request
+    ) {
+        return ApiResponse.of(
+                artistProductService.updateProductMemo(resolveUserId(userDetails, userId), productId, request)
+        );
+    }
+
+    @DeleteMapping("/{productId}/memo")
+    public ApiResponse<ArtistProductMemoResponse> deleteProductMemo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long productId
+    ) {
+        return ApiResponse.of(
+                artistProductService.deleteProductMemo(resolveUserId(userDetails, userId), productId)
+        );
     }
 
     @PutMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
