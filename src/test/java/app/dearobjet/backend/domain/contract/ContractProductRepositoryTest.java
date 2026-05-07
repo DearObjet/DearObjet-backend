@@ -3,6 +3,7 @@ package app.dearobjet.backend.domain.contract;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
@@ -153,6 +154,135 @@ class ContractProductRepositoryTest {
         assertThat(plateRow.getTotalQuantity()).isEqualTo((long) PLATE_INBOUND_QUANTITY);
         assertThat(plateRow.getStockQuantity()).isEqualTo(PLATE_INBOUND_QUANTITY - PLATE_SALE_QUANTITY);
         assertThat(plateRow.getRecentStockedAt()).isEqualTo(PLATE_INBOUND_AT);
+    }
+
+    @Test
+    @DisplayName("출고관리 입점 매장 목록은 승인 계약 소품샵만 반환한다")
+    void givenArtistContracts_whenQueryShipmentShops_thenReturnApprovedShopsOnly() {
+        Artist artist = createArtist(
+                createUser("shipment-artist@test.com", "출고관리 작가", Role.ARTIST, "01097000001", null),
+                "출고관리 작가",
+                Specialty.CERAMIC
+        );
+        Shop approvedShop = createShop(
+                createUser("shipment-approved-shop@test.com", "승인 소품샵", Role.SHOP, "01097000002", null),
+                "승인 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        Shop pendingShop = createShop(
+                createUser("shipment-pending-shop@test.com", "대기 소품샵", Role.SHOP, "01097000003", null),
+                "대기 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop endedShop = createShop(
+                createUser("shipment-ended-shop@test.com", "만료 소품샵", Role.SHOP, "01097000004", null),
+                "만료 소품샵",
+                Specialty.STATIONERY_PAPER
+        );
+        ShopArtistContract approvedContract = createContract(
+                artist,
+                approvedShop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        createContract(artist, pendingShop, ContractStatus.PENDING, ContractRequestType.NONE, null, null);
+        createContract(artist, endedShop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        flushAndClear();
+
+        List<ArtistShipmentShopRow> rows = contractRepository.findShipmentShopRowsByArtistId(
+                artist.getId(),
+                ContractStatus.APPROVED,
+                ContractProductListingStatus.ACTIVE
+        );
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getContractId()).isEqualTo(approvedContract.getShopArtistContractsId());
+        assertThat(rows.get(0).getShopName()).isEqualTo("승인 소품샵");
+        assertThat(rows.get(0).getSpecialty()).isEqualTo(Specialty.HANDMADE_CRAFT);
+        assertThat(rows.get(0).getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
+        assertThat(rows.get(0).getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
+        assertThat(rows.get(0).getRecentStockedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("출고관리 입점 매장 목록은 최근 입고일 기준으로 정렬한다")
+    void givenShipmentShopsWithInbound_whenQueryShipmentShops_thenSortByRecentInbound() {
+        Artist artist = createArtist(
+                createUser("shipment-sort-artist@test.com", "출고정렬 작가", Role.ARTIST, "01098000001", null),
+                "출고정렬 작가",
+                Specialty.CERAMIC
+        );
+        Shop recentShop = createShop(
+                createUser("shipment-sort-recent@test.com", "최근 입고 소품샵", Role.SHOP, "01098000002", null),
+                "최근 입고 소품샵",
+                Specialty.CERAMIC
+        );
+        Shop oldShop = createShop(
+                createUser("shipment-sort-old@test.com", "이전 입고 소품샵", Role.SHOP, "01098000003", null),
+                "이전 입고 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        Shop holdShop = createShop(
+                createUser("shipment-sort-hold@test.com", "보류 소품샵", Role.SHOP, "01098000004", null),
+                "보류 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        ShopArtistContract recentContract = createContract(artist, recentShop);
+        ShopArtistContract oldContract = createContract(artist, oldShop);
+        ShopArtistContract holdContract = createContract(artist, holdShop);
+        Product recentProduct = createProduct(
+                artist,
+                "최근 입고 상품",
+                CUP_PRICE,
+                "https://image.test/products/recent.png"
+        );
+        Product oldProduct = createProduct(
+                artist,
+                "이전 입고 상품",
+                PLATE_PRICE,
+                "https://image.test/products/old.png"
+        );
+        ContractProduct recentInventory = createContractProduct(
+                recentContract,
+                recentProduct,
+                CUP_SELLING_PRICE,
+                CUP_MARGIN_AMOUNT,
+                CUP_UNIT_SETTLEMENT_AMOUNT
+        );
+        ContractProduct oldInventory = createContractProduct(
+                oldContract,
+                oldProduct,
+                PLATE_SELLING_PRICE,
+                new BigDecimal("1800.00"),
+                new BigDecimal("7200.00")
+        );
+        ContractProductStockMovement recentInbound =
+                recentInventory.applyInbound(CUP_INBOUND_QUANTITY, CUP_INBOUND_AT, ACTOR_USER_ID, "최근 입고");
+        ContractProductStockMovement oldInbound =
+                oldInventory.applyInbound(PLATE_INBOUND_QUANTITY, PLATE_INBOUND_AT, ACTOR_USER_ID, "이전 입고");
+        contractProductRepository.save(recentInventory);
+        contractProductRepository.save(oldInventory);
+        saveMovement(recentInbound);
+        saveMovement(oldInbound);
+        flushAndClear();
+
+        List<ArtistShipmentShopRow> rows = contractRepository.findShipmentShopRowsByArtistId(
+                artist.getId(),
+                ContractStatus.APPROVED,
+                ContractProductListingStatus.ACTIVE
+        );
+
+        assertThat(rows).extracting("contractId")
+                .containsExactly(
+                        recentContract.getShopArtistContractsId(),
+                        oldContract.getShopArtistContractsId(),
+                        holdContract.getShopArtistContractsId()
+                );
+        assertThat(rows.get(0).getRecentStockedAt()).isEqualTo(CUP_INBOUND_AT);
+        assertThat(rows.get(1).getRecentStockedAt()).isEqualTo(PLATE_INBOUND_AT);
+        assertThat(rows.get(2).getRecentStockedAt()).isNull();
     }
 
     @Test
