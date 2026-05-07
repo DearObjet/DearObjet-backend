@@ -41,7 +41,10 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "A004", "인증이 필요합니다"),
 
     // Notice (N0XX)
-    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "공지사항을 찾을 수 없습니다");
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "공지사항을 찾을 수 없습니다"),
+
+    // Product (P0XX)
+    PRODUCT_STOCK_CONFLICT(HttpStatus.CONFLICT, "P001", "상품 재고가 이미 변경되었습니다");
 
     private final HttpStatus status;
     private final String code;
