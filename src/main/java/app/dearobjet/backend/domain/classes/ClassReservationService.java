@@ -117,6 +117,22 @@ public class ClassReservationService {
     }
 
     @Transactional
+    public void cancelReservation(Long userId, Long reservationId) {
+        ClassReservation reservation = classReservationRepository.findByReservationIdAndUser_Id(reservationId, userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 내역을 찾을 수 없습니다."));
+
+        if (reservation.getReservationStatus() == ClassReservationStatus.CANCELED) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "이미 취소된 예약입니다.");
+        }
+
+        if (reservation.getReservationTime() != null && reservation.getReservationTime().isBefore(LocalDateTime.now())) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "지난 예약은 취소할 수 없습니다.");
+        }
+
+        reservation.cancel();
+    }
+
+    @Transactional
     public CreateClassReservationResponse createReservation(Long userId, CreateClassReservationRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));

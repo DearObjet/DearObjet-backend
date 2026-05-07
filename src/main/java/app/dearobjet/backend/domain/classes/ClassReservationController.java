@@ -54,6 +54,15 @@ public class ClassReservationController {
         return ApiResponse.of(classReservationService.createReservation(userDetails.getUserId(), request));
     }
 
+    @PostMapping("/class-reservations/{reservationId}/cancel")
+    public ApiResponse<Void> cancelReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId
+    ) {
+        classReservationService.cancelReservation(userDetails.getUserId(), reservationId);
+        return ApiResponse.of(null);
+    }
+
     @GetMapping("/classes/{classId}/available-slots")
     public ApiResponse<AvailableClassSlotsResponse> getAvailableSlots(
             @PathVariable Long classId,

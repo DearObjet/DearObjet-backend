@@ -60,4 +60,8 @@ public class  ClassReservation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
     private ClassSession classSession;
+
+    public void cancel() {
+        this.reservationStatus = ClassReservationStatus.CANCELED;
+    }
 }

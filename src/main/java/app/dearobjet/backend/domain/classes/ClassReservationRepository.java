@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
 public interface ClassReservationRepository extends JpaRepository<ClassReservation, Long> {
 
@@ -25,6 +26,8 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
     List<ClassReservation> findByUser_IdOrderByReservationTimeDesc(Long userId);
 
     boolean existsByUser_IdAndReservationStatus(Long userId, ClassReservationStatus reservationStatus);
+
+    Optional<ClassReservation> findByReservationIdAndUser_Id(Long reservationId, Long userId);
 
     List<ClassReservation> findByClasses_ClassesIdAndReservationTimeBetween(
             Long classesId,

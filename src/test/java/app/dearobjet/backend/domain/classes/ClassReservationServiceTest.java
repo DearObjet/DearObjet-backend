@@ -463,4 +463,46 @@ class ClassReservationServiceTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("예약한 원데이클래스 내역이 없습니다");
     }
+
+    @Test
+    void cancelReservation_updatesStatusToCanceled() {
+        ClassReservation reservation = ClassReservation.builder()
+                .reservationId(1L)
+                .reservationTime(LocalDateTime.now().plusDays(1))
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .build();
+
+        given(classReservationRepository.findByReservationIdAndUser_Id(1L, 1L))
+                .willReturn(Optional.of(reservation));
+
+        classReservationService.cancelReservation(1L, 1L);
+
+        assertThat(reservation.getReservationStatus()).isEqualTo(ClassReservationStatus.CANCELED);
+    }
+
+    @Test
+    void cancelReservation_throwsWhenReservationMissing() {
+        given(classReservationRepository.findByReservationIdAndUser_Id(1L, 1L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> classReservationService.cancelReservation(1L, 1L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("예약 내역을 찾을 수 없습니다.");
+    }
+
+    @Test
+    void cancelReservation_throwsWhenReservationAlreadyCanceled() {
+        ClassReservation reservation = ClassReservation.builder()
+                .reservationId(1L)
+                .reservationTime(LocalDateTime.now().plusDays(1))
+                .reservationStatus(ClassReservationStatus.CANCELED)
+                .build();
+
+        given(classReservationRepository.findByReservationIdAndUser_Id(1L, 1L))
+                .willReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> classReservationService.cancelReservation(1L, 1L))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessage("이미 취소된 예약입니다.");
+    }
 }
