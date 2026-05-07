@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
+import app.dearobjet.backend.domain.classes.dto.MyClassReservationsResponse;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
 import jakarta.validation.Valid;
@@ -36,6 +37,13 @@ public class ClassReservationController {
         return ApiResponse.of(
                 classReservationService.getReservations(userDetails.getUserId(), status, page, size)
         );
+    }
+
+    @GetMapping("/class-reservations/me")
+    public ApiResponse<MyClassReservationsResponse> getMyReservations(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ApiResponse.of(classReservationService.getMyReservations(userDetails.getUserId()));
     }
 
     @PostMapping("/class-reservations")

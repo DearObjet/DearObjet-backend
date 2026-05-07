@@ -3,10 +3,13 @@ package app.dearobjet.backend.domain.classes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
+import app.dearobjet.backend.domain.classes.dto.MyClassReservationsResponse;
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.shop.entity.ShopBusinessHour;
 import app.dearobjet.backend.domain.shop.repository.ShopBusinessHourRepository;
@@ -16,6 +19,7 @@ import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.InvalidInputException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -250,6 +254,10 @@ class ClassReservationServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(classSessionRepository.findBySessionId(100L))
                 .willReturn(Optional.of(session));
+        given(classReservationRepository.existsByUser_IdAndReservationStatus(
+                eq(1L),
+                eq(ClassReservationStatus.PENDING)
+        )).willReturn(false);
         given(classReservationRepository.sumGuestCountBySessionId(100L)).willReturn(1);
         given(classReservationRepository.save(org.mockito.ArgumentMatchers.any(ClassReservation.class)))
                 .willAnswer(invocation -> {
@@ -302,6 +310,10 @@ class ClassReservationServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(classSessionRepository.findBySessionId(100L))
                 .willReturn(Optional.of(session));
+        given(classReservationRepository.existsByUser_IdAndReservationStatus(
+                eq(1L),
+                eq(ClassReservationStatus.PENDING)
+        )).willReturn(false);
         given(classReservationRepository.sumGuestCountBySessionId(100L)).willReturn(3);
 
         assertThatThrownBy(() -> classReservationService.createReservation(1L, request))
@@ -337,9 +349,118 @@ class ClassReservationServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
         given(classSessionRepository.findBySessionId(100L))
                 .willReturn(Optional.of(session));
+        given(classReservationRepository.existsByUser_IdAndReservationStatus(
+                eq(1L),
+                eq(ClassReservationStatus.PENDING)
+        )).willReturn(false);
 
         assertThatThrownBy(() -> classReservationService.createReservation(1L, request))
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessage("클래스를 개설한 본인은 예약할 수 없습니다.");
+    }
+
+    @Test
+    void createReservation_throwsWhenActiveReservationAlreadyExists() {
+        LocalDate date = LocalDate.now().plusDays(1);
+        Shop shop = Shop.builder().shopId(1L).build();
+        User user = User.builder().id(1L).name("예약자").build();
+        Classes classes = Classes.builder()
+                .classesId(10L)
+                .shop(shop)
+                .maxCapacity(4)
+                .build();
+        ClassSession session = ClassSession.builder()
+                .sessionId(100L)
+                .classes(classes)
+                .shop(shop)
+                .startDatetime(date.atTime(10, 0))
+                .endDatetime(date.atTime(11, 0))
+                .capacity(4)
+                .sessionStatus("OPEN")
+                .build();
+        CreateClassReservationRequest request = new CreateClassReservationRequest(
+                100L,
+                1,
+                "홍길동",
+                null
+        );
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(classSessionRepository.findBySessionId(100L)).willReturn(Optional.of(session));
+        given(classReservationRepository.existsByUser_IdAndReservationStatus(
+                eq(1L),
+                eq(ClassReservationStatus.PENDING)
+        )).willReturn(true);
+
+        assertThatThrownBy(() -> classReservationService.createReservation(1L, request))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessage("이미 대기 중인 원데이클래스 예약이 있습니다");
+    }
+
+    @Test
+    void getMyReservations_returnsCurrentAndPastReservations() {
+        LocalDateTime now = LocalDateTime.now();
+        Shop currentShop = org.mockito.Mockito.mock(Shop.class);
+        Shop pastShop = org.mockito.Mockito.mock(Shop.class);
+        Classes currentClass = Classes.builder()
+                .classesId(10L)
+                .shop(currentShop)
+                .className("현재 클래스")
+                .build();
+        Classes pastClass = Classes.builder()
+                .classesId(20L)
+                .shop(pastShop)
+                .className("지난 클래스")
+                .build();
+
+        ClassReservation currentReservation = ClassReservation.builder()
+                .reservationId(1L)
+                .reservationTime(now.plusDays(1))
+                .reservationStatus(ClassReservationStatus.PENDING)
+                .classes(currentClass)
+                .build();
+        ClassReservation canceledReservation = ClassReservation.builder()
+                .reservationId(2L)
+                .reservationTime(now.plusDays(2))
+                .reservationStatus(ClassReservationStatus.CANCELED)
+                .classes(pastClass)
+                .build();
+        ClassReservation pastReservation = ClassReservation.builder()
+                .reservationId(3L)
+                .reservationTime(now.minusDays(1))
+                .reservationStatus(ClassReservationStatus.CONFIRMED)
+                .classes(pastClass)
+                .build();
+
+        given(currentShop.getShopName()).willReturn("현재매장");
+        given(pastShop.getShopName()).willReturn("지난매장");
+        given(classReservationRepository.findByUser_IdOrderByReservationTimeDesc(1L))
+                .willReturn(List.of(canceledReservation, currentReservation, pastReservation));
+
+        MyClassReservationsResponse response = classReservationService.getMyReservations(1L);
+
+        assertThat(response.currentReservations()).hasSize(1);
+        assertThat(response.currentReservations().get(0).reservationNumber()).isEqualTo(1L);
+        assertThat(response.currentReservations().get(0).status()).isEqualTo("PENDING");
+        assertThat(response.currentReservations().get(0).reservationStore()).isEqualTo("현재매장");
+        assertThat(response.currentReservations().get(0).className()).isEqualTo("현재 클래스");
+
+        assertThat(response.pastReservations()).hasSize(2);
+        assertThat(response.pastReservations())
+                .extracting(MyClassReservationsResponse.ReservationSummary::reservationNumber)
+                .containsExactly(2L, 3L);
+        assertThat(response.pastReservations())
+                .extracting(MyClassReservationsResponse.ReservationSummary::status)
+                .containsExactly("CANCELED", "CONFIRMED");
+    }
+
+    @Test
+    void getMyReservations_throwsWhenReservationHistoryMissing() {
+        given(classReservationRepository.findByUser_IdOrderByReservationTimeDesc(1L))
+                .willReturn(List.of());
+
+        assertThatThrownBy(() -> classReservationService.getMyReservations(1L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("예약한 원데이클래스 내역이 없습니다");
     }
 }

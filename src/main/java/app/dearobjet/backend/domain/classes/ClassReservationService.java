@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
+import app.dearobjet.backend.domain.classes.dto.MyClassReservationsResponse;
 import app.dearobjet.backend.domain.shop.entity.ShopBusinessHour;
 import app.dearobjet.backend.domain.shop.repository.ShopBusinessHourRepository;
 import app.dearobjet.backend.domain.user.entity.User;
@@ -82,6 +83,39 @@ public class ClassReservationService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public MyClassReservationsResponse getMyReservations(Long userId) {
+        List<ClassReservation> reservations = classReservationRepository.findByUser_IdOrderByReservationTimeDesc(userId);
+        if (reservations.isEmpty()) {
+            throw new EntityNotFoundException(ErrorCode.CLASS_RESERVATION_NOT_FOUND);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<MyClassReservationsResponse.ReservationSummary> currentReservations = new ArrayList<>();
+        List<MyClassReservationsResponse.ReservationSummary> pastReservations = new ArrayList<>();
+
+        for (ClassReservation reservation : reservations) {
+            MyClassReservationsResponse.ReservationSummary item = new MyClassReservationsResponse.ReservationSummary(
+                    reservation.getReservationId(),
+                    reservation.getReservationStatus() == null ? null : reservation.getReservationStatus().name(),
+                    reservation.getClasses() == null || reservation.getClasses().getShop() == null
+                            ? null
+                            : reservation.getClasses().getShop().getShopName(),
+                    reservation.getReservationTime(),
+                    reservation.getClasses() == null ? null : reservation.getClasses().getClassName()
+            );
+
+            if (isCurrentReservation(reservation, now)) {
+                currentReservations.add(item);
+                continue;
+            }
+
+            pastReservations.add(item);
+        }
+
+        return new MyClassReservationsResponse(currentReservations, pastReservations);
+    }
+
     @Transactional
     public CreateClassReservationResponse createReservation(Long userId, CreateClassReservationRequest request) {
         User user = userRepository.findById(userId)
@@ -91,6 +125,12 @@ public class ClassReservationService {
         ClassSession session = classSessionRepository.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 가능한 슬롯을 찾을 수 없습니다."));
         Classes classes = session.getClasses();
+        if (classReservationRepository.existsByUser_IdAndReservationStatus(
+                userId,
+                ClassReservationStatus.PENDING
+        )) {
+            throw new InvalidInputException(ErrorCode.ACTIVE_CLASS_RESERVATION_ALREADY_EXISTS);
+        }
 
         validateReservationRequest(user, request, classes, session);
 
@@ -246,8 +286,9 @@ public class ClassReservationService {
             existingSessions.addAll(classSessionRepository.saveAll(newSessions));
         }
 
-        existingSessions.sort(Comparator.comparing(ClassSession::getStartDatetime));
-        return existingSessions;
+        List<ClassSession> sortedSessions = new ArrayList<>(existingSessions);
+        sortedSessions.sort(Comparator.comparing(ClassSession::getStartDatetime));
+        return sortedSessions;
     }
 
     private void validateReservationRequest(
@@ -289,6 +330,12 @@ public class ClassReservationService {
         } catch (IllegalArgumentException exception) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT, "예약 상태는 PENDING, CONFIRMED, CANCELED 중 하나여야 합니다.");
         }
+    }
+
+    private boolean isCurrentReservation(ClassReservation reservation, LocalDateTime now) {
+        return reservation.getReservationStatus() != ClassReservationStatus.CANCELED
+                && reservation.getReservationTime() != null
+                && !reservation.getReservationTime().isBefore(now);
     }
 
     private String formatMinutes(int minutes) {

@@ -21,6 +21,11 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = {"classes", "classes.shop"})
+    List<ClassReservation> findByUser_IdOrderByReservationTimeDesc(Long userId);
+
+    boolean existsByUser_IdAndReservationStatus(Long userId, ClassReservationStatus reservationStatus);
+
     List<ClassReservation> findByClasses_ClassesIdAndReservationTimeBetween(
             Long classesId,
             LocalDateTime start,
