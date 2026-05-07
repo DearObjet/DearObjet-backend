@@ -2,7 +2,9 @@ package app.dearobjet.backend.domain.artist.service;
 
 import app.dearobjet.backend.domain.artist.dto.ArtistProductItemResponse;
 import app.dearobjet.backend.domain.artist.dto.ArtistProductListResponse;
+import app.dearobjet.backend.domain.artist.dto.ArtistProductMemoResponse;
 import app.dearobjet.backend.domain.artist.dto.CreateArtistProductRequest;
+import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductMemoRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockRequest;
 import app.dearobjet.backend.domain.artist.dto.UpdateArtistProductStockResponse;
@@ -138,6 +140,36 @@ public class ArtistProductService {
         productRepository.flush();
 
         return UpdateArtistProductStockResponse.from(updatedProducts);
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistProductMemoResponse getProductMemo(Long userId, Long productId) {
+        Artist artist = getArtistByUserId(userId);
+        Product product = getOwnedActiveProduct(productId, artist.getId());
+
+        return ArtistProductMemoResponse.from(product);
+    }
+
+    @Transactional
+    public ArtistProductMemoResponse updateProductMemo(
+            Long userId,
+            Long productId,
+            UpdateArtistProductMemoRequest request
+    ) {
+        Artist artist = getArtistByUserId(userId);
+        Product product = getOwnedActiveProduct(productId, artist.getId());
+        product.updateMemo(request.getMemo());
+
+        return ArtistProductMemoResponse.from(product);
+    }
+
+    @Transactional
+    public ArtistProductMemoResponse deleteProductMemo(Long userId, Long productId) {
+        Artist artist = getArtistByUserId(userId);
+        Product product = getOwnedActiveProduct(productId, artist.getId());
+        product.updateMemo("");
+
+        return ArtistProductMemoResponse.from(product);
     }
 
     @Transactional

@@ -103,6 +103,19 @@ class ProductRepositoryTest {
                 .containsExactly(activeProduct.getProductsId());
     }
 
+    @Test
+    @DisplayName("상품 메모를 저장하고 조회한다")
+    void givenProductMemo_whenSaveAndFind_thenReturnMemo() {
+        Artist artist = createArtist("artist-a@test.com", "Postman 도자기 작가");
+        Product product = createProduct(artist, "활성 컵", ProductStatus.ACTIVE);
+        product.updateMemo("매장 전면 진열");
+        productRepository.flush();
+
+        Product foundProduct = productRepository.findById(product.getProductsId()).orElseThrow();
+
+        assertThat(foundProduct.getMemo()).isEqualTo("매장 전면 진열");
+    }
+
     private Artist createArtist(String email, String businessName) {
         User user = userRepository.save(User.builder()
                 .email(email)
