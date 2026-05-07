@@ -76,6 +76,9 @@ public class ShopArtistContract extends BaseTimeEntity {
     @Column(name = "recent_inbound_confirmed_by_user_id")
     private Long recentInboundConfirmedByUserId;
 
+    @Column(name = "terminated_at")
+    private LocalDateTime terminatedAt;
+
     public void updateMemo(String memo) {
         this.memo = memo == null ? "" : memo;
     }
@@ -86,8 +89,28 @@ public class ShopArtistContract extends BaseTimeEntity {
         this.recentInboundConfirmedByUserId = null;
     }
 
-    public void terminate() {
+    public void terminate(LocalDateTime terminatedAt) {
         this.contractStatus = ContractStatus.TERMINATED;
+        this.contractRequestType = ContractRequestType.NONE;
+        this.terminatedAt = terminatedAt;
+    }
+
+    public void terminate() {
+        terminate(LocalDateTime.now());
+    }
+
+    public void requestExtension() {
+        this.contractStatus = ContractStatus.PENDING;
+        this.contractRequestType = ContractRequestType.EXTENSION;
+    }
+
+    public void requestRelease() {
+        this.contractStatus = ContractStatus.PENDING;
+        this.contractRequestType = ContractRequestType.RELEASE;
+    }
+
+    public void cancelReleaseRequest() {
+        this.contractStatus = ContractStatus.ENDED;
         this.contractRequestType = ContractRequestType.NONE;
     }
 

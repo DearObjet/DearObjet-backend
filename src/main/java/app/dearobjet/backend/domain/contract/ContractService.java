@@ -12,6 +12,9 @@ import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
@@ -23,9 +26,11 @@ import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.contract.repository.ContractProductRepository;
 import app.dearobjet.backend.domain.contract.repository.ContractProductStockMovementRepository;
 import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
+import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
@@ -62,10 +67,17 @@ public class ContractService {
             ContractStatus.ENDED
     );
 
+    private static final List<ContractStatus> MANAGED_SHOP_CONTRACT_STATUSES = List.of(
+            ContractStatus.PENDING,
+            ContractStatus.APPROVED,
+            ContractStatus.ENDED
+    );
+
     private final ContractRepository contractRepository;
     private final ContractProductRepository contractProductRepository;
     private final ContractProductStockMovementRepository contractProductStockMovementRepository;
     private final ShopRepository shopRepository;
+    private final ArtistRepository artistRepository;
 
     @Transactional(readOnly = true)
     public ContractApplicationCountResponse getPendingApplicationCount(Long userId) {
@@ -150,6 +162,96 @@ public class ContractService {
         return ManagedArtistContractDetailResponse.from(contract);
     }
 
+    @Transactional(readOnly = true)
+    public ManagedShopContractListResponse getManagedShops(Long userId) {
+        Artist artist = getArtistByUserId(userId);
+        LocalDate today = LocalDate.now();
+
+        return ManagedShopContractListResponse.from(
+                contractRepository.findManagedShopRowsByArtistId(
+                        artist.getId(),
+                        MANAGED_SHOP_CONTRACT_STATUSES,
+                        ContractStatus.TERMINATED,
+                        LocalDateTime.now().minusDays(TERMINATION_GRACE_PERIOD_DAYS),
+                        ContractStatus.PENDING,
+                        ContractStatus.APPROVED,
+                        ContractStatus.ENDED
+                ),
+                today
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ManagedShopContractDetailResponse getManagedShopContract(Long userId, Long contractId) {
+        Artist artist = getArtistByUserId(userId);
+
+        ShopArtistContract contract = contractRepository.findManagedShopContractByIdAndArtistId(
+                        contractId,
+                        artist.getId(),
+                        MANAGED_SHOP_CONTRACT_STATUSES,
+                        ContractStatus.TERMINATED,
+                        LocalDateTime.now().minusDays(TERMINATION_GRACE_PERIOD_DAYS)
+                )
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계약서 정보를 찾을 수 없습니다."
+                ));
+
+        return ManagedShopContractDetailResponse.from(contract);
+    }
+
+    @Transactional
+    public ManagedShopContractActionResultResponse requestManagedShopContractExtension(
+            Long userId,
+            Long contractId
+    ) {
+        ShopArtistContract contract = getArtistOwnedContract(userId, contractId);
+        if (!isArtistRenewable(contract, LocalDate.now())) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "계약연장 신청이 가능한 계약이 아닙니다."
+            );
+        }
+
+        contract.requestExtension();
+        return ManagedShopContractActionResultResponse.from(contract);
+    }
+
+    @Transactional
+    public ManagedShopContractActionResultResponse requestManagedShopContractRelease(
+            Long userId,
+            Long contractId
+    ) {
+        ShopArtistContract contract = getArtistOwnedContract(userId, contractId);
+        if (!isArtistRenewable(contract, LocalDate.now())) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "해제신청이 가능한 계약이 아닙니다."
+            );
+        }
+
+        contract.requestRelease();
+        return ManagedShopContractActionResultResponse.from(contract);
+    }
+
+    @Transactional
+    public ManagedShopContractActionResultResponse cancelManagedShopContractRelease(
+            Long userId,
+            Long contractId
+    ) {
+        ShopArtistContract contract = getArtistOwnedContract(userId, contractId);
+        if (contract.getContractStatus() != ContractStatus.PENDING
+                || contract.getContractRequestType() != ContractRequestType.RELEASE) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "해제취소가 가능한 계약이 아닙니다."
+            );
+        }
+
+        contract.cancelReleaseRequest();
+        return ManagedShopContractActionResultResponse.from(contract);
+    }
+
     @Transactional
     public ContractTerminationResponse terminateManagedArtistContract(Long userId, Long contractId) {
         Shop shop = getShopByUserId(userId);
@@ -171,7 +273,7 @@ public class ContractService {
             );
         }
 
-        contract.terminate();
+        contract.terminate(LocalDateTime.now());
         return ContractTerminationResponse.from(contract);
     }
 
@@ -259,6 +361,21 @@ public class ContractService {
                 .orElseThrow(() -> new IllegalArgumentException("Shop not found for user: " + userId));
     }
 
+    private Artist getArtistByUserId(Long userId) {
+        return artistRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Artist not found for user: " + userId));
+    }
+
+    private ShopArtistContract getArtistOwnedContract(Long userId, Long contractId) {
+        Artist artist = getArtistByUserId(userId);
+
+        return contractRepository.findContractByIdAndArtistId(contractId, artist.getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계약서 정보를 찾을 수 없습니다."
+                ));
+    }
+
     private ShopArtistContract getApprovedContract(Long contractId, Long shopId) {
         return contractRepository.findApprovedByIdAndShopId(contractId, shopId, ContractStatus.APPROVED)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -280,6 +397,18 @@ public class ContractService {
 
         LocalDate endDate = contract.getContractEndDate();
         return endDate != null && !today.isBefore(endDate.plusDays(TERMINATION_GRACE_PERIOD_DAYS));
+    }
+
+    private boolean isArtistRenewable(ShopArtistContract contract, LocalDate today) {
+        if (contract.getContractStatus() == ContractStatus.ENDED) {
+            return true;
+        }
+        if (contract.getContractStatus() != ContractStatus.APPROVED) {
+            return false;
+        }
+
+        LocalDate endDate = contract.getContractEndDate();
+        return endDate != null && today != null && today.isAfter(endDate);
     }
 
     private String normalizeSearchKeyword(String keyword) {

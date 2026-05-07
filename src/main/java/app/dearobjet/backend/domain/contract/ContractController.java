@@ -12,6 +12,9 @@ import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
+import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -50,6 +53,14 @@ public class ContractController {
         return ApiResponse.of(contractService.getManagedArtists(resolveUserId(userDetails, userId)));
     }
 
+    @GetMapping("/shops")
+    public ApiResponse<ManagedShopContractListResponse> getManagedShops(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(contractService.getManagedShops(resolveUserId(userDetails, userId)));
+    }
+
     @GetMapping("/artists/suggestions")
     public ApiResponse<ArtistSuggestionListResponse> getArtistSuggestions(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -75,6 +86,62 @@ public class ContractController {
     ) {
         return ApiResponse.of(
                 contractService.getManagedArtistContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
+
+    @GetMapping("/shops/{contractId}")
+    public ApiResponse<ManagedShopContractDetailResponse> getManagedShopContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.getManagedShopContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
+
+    @PatchMapping("/shops/{contractId}/extension-request")
+    public ApiResponse<ManagedShopContractActionResultResponse> requestManagedShopContractExtension(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.requestManagedShopContractExtension(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
+
+    @PatchMapping("/shops/{contractId}/release-request")
+    public ApiResponse<ManagedShopContractActionResultResponse> requestManagedShopContractRelease(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.requestManagedShopContractRelease(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
+
+    @PatchMapping("/shops/{contractId}/release-cancellation")
+    public ApiResponse<ManagedShopContractActionResultResponse> cancelManagedShopContractRelease(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.cancelManagedShopContractRelease(
                         resolveUserId(userDetails, userId),
                         contractId
                 )
