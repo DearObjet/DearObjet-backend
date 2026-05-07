@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract;
 
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
@@ -65,6 +66,40 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             """)
     List<ContractInventoryRow> findInventoryRowsByShopId(
             @Param("shopId") Long shopId,
+            @Param("contractStatus") ContractStatus contractStatus,
+            @Param("listingStatus") ContractProductListingStatus listingStatus
+    );
+
+    @Query("""
+            select c.shopArtistContractsId as contractId,
+                   s.shopId as shopId,
+                   bp.businessName as shopName,
+                   bp.specialty as specialty,
+                   c.contractStartDate as contractStartDate,
+                   c.contractEndDate as contractEndDate,
+                   max(cp.recentStockedAt) as recentStockedAt,
+                   c.recentInboundConfirmed as inboundConfirmed
+            from ShopArtistContract c
+            join c.shop s
+            join s.businessProfile bp
+            left join ContractProduct cp
+                on cp.shopArtistContract = c
+               and cp.listingStatus = :listingStatus
+            where c.artist.id = :artistId
+              and c.contractStatus = :contractStatus
+            group by c.shopArtistContractsId,
+                     s.shopId,
+                     bp.businessName,
+                     bp.specialty,
+                     c.contractStartDate,
+                     c.contractEndDate,
+                     c.recentInboundConfirmed
+            order by case when max(cp.recentStockedAt) is null then 1 else 0 end,
+                     max(cp.recentStockedAt) desc,
+                     c.shopArtistContractsId desc
+            """)
+    List<ArtistShipmentShopRow> findShipmentShopRowsByArtistId(
+            @Param("artistId") Long artistId,
             @Param("contractStatus") ContractStatus contractStatus,
             @Param("listingStatus") ContractProductListingStatus listingStatus
     );
