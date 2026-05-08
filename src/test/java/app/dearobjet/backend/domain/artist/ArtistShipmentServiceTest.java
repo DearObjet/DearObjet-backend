@@ -8,6 +8,7 @@ import app.dearobjet.backend.domain.contract.ContractRepository;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
+import app.dearobjet.backend.domain.contract.enums.CommissionType;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
@@ -42,6 +43,8 @@ class ArtistShipmentServiceTest {
     private static final Long CONTRACT_PRODUCT_ID = 70L;
     private static final Long SHOP_ID = 100L;
     private static final BigDecimal SELLING_PRICE = new BigDecimal("15000.00");
+    private static final BigDecimal COMMISSION_VALUE = new BigDecimal("20.0000");
+    private static final BigDecimal UNIT_SETTLEMENT_AMOUNT = new BigDecimal("12000.00");
     private static final LocalDate CONTRACT_START_DATE = LocalDate.of(2026, 5, 1);
     private static final LocalDate CONTRACT_END_DATE = LocalDate.of(2026, 12, 31);
     private static final LocalDateTime RECENT_STOCKED_AT = LocalDateTime.of(2026, 5, 3, 10, 0);
@@ -116,6 +119,9 @@ class ArtistShipmentServiceTest {
         assertThat(response.getItems().get(0).getProductName()).isEqualTo("세라믹 컵");
         assertThat(response.getItems().get(0).getTotalShipmentQuantity()).isEqualTo(10L);
         assertThat(response.getItems().get(0).getSellingPrice()).isEqualByComparingTo(SELLING_PRICE);
+        assertThat(response.getItems().get(0).getCommissionType()).isEqualTo(CommissionType.RATE);
+        assertThat(response.getItems().get(0).getCommissionValue()).isEqualByComparingTo(COMMISSION_VALUE);
+        assertThat(response.getItems().get(0).getUnitSettlementAmount()).isEqualByComparingTo(UNIT_SETTLEMENT_AMOUNT);
     }
 
     @Test
@@ -172,6 +178,21 @@ class ArtistShipmentServiceTest {
             @Override
             public BigDecimal getSellingPrice() {
                 return SELLING_PRICE;
+            }
+
+            @Override
+            public CommissionType getCommissionType() {
+                return CommissionType.RATE;
+            }
+
+            @Override
+            public BigDecimal getCommissionValue() {
+                return COMMISSION_VALUE;
+            }
+
+            @Override
+            public BigDecimal getUnitSettlementAmount() {
+                return UNIT_SETTLEMENT_AMOUNT;
             }
         };
     }
