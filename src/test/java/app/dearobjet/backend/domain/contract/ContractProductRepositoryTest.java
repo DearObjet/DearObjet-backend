@@ -3,6 +3,7 @@ package app.dearobjet.backend.domain.contract;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
@@ -154,6 +155,89 @@ class ContractProductRepositoryTest {
         assertThat(plateRow.getTotalQuantity()).isEqualTo((long) PLATE_INBOUND_QUANTITY);
         assertThat(plateRow.getStockQuantity()).isEqualTo(PLATE_INBOUND_QUANTITY - PLATE_SALE_QUANTITY);
         assertThat(plateRow.getRecentStockedAt()).isEqualTo(PLATE_INBOUND_AT);
+    }
+
+    @Test
+    @DisplayName("작가 출고리스트는 활성 계약상품의 총 출고수량과 판매가를 반환한다")
+    void givenArtistShipmentProducts_whenQueryByContract_thenReturnShipmentProductRows() {
+        Artist artist = createArtist(
+                createUser("shipment-products-artist@test.com", "출고상품 작가", Role.ARTIST, "01099000001", null),
+                "출고상품 작가",
+                Specialty.CERAMIC
+        );
+        Shop shop = createShop(
+                createUser("shipment-products-shop@test.com", "출고상품 소품샵", Role.SHOP, "01099000002", null),
+                "출고상품 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        ShopArtistContract contract = createContract(artist, shop);
+        Product shippedProduct = createProduct(
+                artist,
+                "출고된 세라믹 컵",
+                CUP_PRICE,
+                "https://image.test/products/shipped-cup.png"
+        );
+        Product pendingProduct = createProduct(
+                artist,
+                "출고 대기 접시",
+                PLATE_PRICE,
+                "https://image.test/products/pending-plate.png"
+        );
+        Product endedProduct = createProduct(
+                artist,
+                "종료된 상품",
+                PLATE_PRICE,
+                "https://image.test/products/ended.png"
+        );
+        ContractProduct shippedInventory = createContractProduct(
+                contract,
+                shippedProduct,
+                CUP_SELLING_PRICE,
+                CUP_MARGIN_AMOUNT,
+                CUP_UNIT_SETTLEMENT_AMOUNT
+        );
+        ContractProduct pendingInventory = createContractProduct(
+                contract,
+                pendingProduct,
+                PLATE_SELLING_PRICE,
+                new BigDecimal("1800.00"),
+                new BigDecimal("7200.00")
+        );
+        ContractProduct endedInventory = ContractProduct.builder()
+                .shopArtistContract(contract)
+                .product(endedProduct)
+                .listingStatus(ContractProductListingStatus.ENDED)
+                .sellingPrice(PLATE_SELLING_PRICE)
+                .build();
+        ContractProductStockMovement firstInbound =
+                shippedInventory.applyInbound(CUP_INBOUND_QUANTITY, CUP_INBOUND_AT, ACTOR_USER_ID, "1차 출고");
+        ContractProductStockMovement secondInbound =
+                shippedInventory.applyInbound(PLATE_INBOUND_QUANTITY, PLATE_INBOUND_AT, ACTOR_USER_ID, "2차 출고");
+
+        contractProductRepository.save(shippedInventory);
+        contractProductRepository.save(pendingInventory);
+        contractProductRepository.save(endedInventory);
+        saveMovement(firstInbound);
+        saveMovement(secondInbound);
+        flushAndClear();
+
+        List<ArtistShipmentProductRow> rows = contractProductRepository.findShipmentProductRowsByContractId(
+                contract.getShopArtistContractsId(),
+                artist.getId(),
+                ContractStatus.APPROVED,
+                ContractProductListingStatus.ACTIVE,
+                ContractProductStockMovementType.INBOUND
+        );
+
+        assertThat(rows).hasSize(2);
+        ArtistShipmentProductRow shippedRow = findShipmentProductRow(rows, "출고된 세라믹 컵");
+        ArtistShipmentProductRow pendingRow = findShipmentProductRow(rows, "출고 대기 접시");
+
+        assertThat(shippedRow.getTotalShipmentQuantity()).isEqualTo(CUP_INBOUND_QUANTITY + PLATE_INBOUND_QUANTITY);
+        assertThat(shippedRow.getProductImageUrl()).isEqualTo("https://image.test/products/shipped-cup.png");
+        assertThat(shippedRow.getSellingPrice()).isEqualByComparingTo(CUP_SELLING_PRICE);
+        assertThat(pendingRow.getTotalShipmentQuantity()).isZero();
+        assertThat(rows).extracting("productName").doesNotContain("종료된 상품");
     }
 
     @Test
@@ -1013,6 +1097,16 @@ class ContractProductRepositoryTest {
 
     private ContractInventoryProductRow findProductRow(
             List<ContractInventoryProductRow> rows,
+            String productName
+    ) {
+        return rows.stream()
+                .filter(row -> productName.equals(row.getProductName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ArtistShipmentProductRow findShipmentProductRow(
+            List<ArtistShipmentProductRow> rows,
             String productName
     ) {
         return rows.stream()

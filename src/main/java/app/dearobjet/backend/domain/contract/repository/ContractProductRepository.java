@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.contract.repository;
 
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
@@ -55,6 +56,37 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
     List<ContractInventoryProductRow> findInventoryProductRowsByContractId(
             @Param("contractId") Long contractId,
             @Param("shopId") Long shopId,
+            @Param("contractStatus") ContractStatus contractStatus,
+            @Param("listingStatus") ContractProductListingStatus listingStatus,
+            @Param("inboundType") ContractProductStockMovementType inboundType
+    );
+
+    @Query("""
+            select cp.contractProductsId as contractProductId,
+                   p.productUrl as productImageUrl,
+                   p.productName as productName,
+                   coalesce(sum(m.quantityDelta), 0) as totalShipmentQuantity,
+                   cp.sellingPrice as sellingPrice
+            from ContractProduct cp
+            join cp.shopArtistContract sac
+            join cp.product p
+            left join ContractProductStockMovement m
+                on m.contractProduct = cp
+               and m.movementType = :inboundType
+            where sac.shopArtistContractsId = :contractId
+              and sac.artist.id = :artistId
+              and sac.contractStatus = :contractStatus
+              and cp.listingStatus = :listingStatus
+            group by cp.contractProductsId,
+                     p.productUrl,
+                     p.productName,
+                     cp.sellingPrice,
+                     cp.recentStockedAt
+            order by cp.recentStockedAt desc, cp.contractProductsId desc
+            """)
+    List<ArtistShipmentProductRow> findShipmentProductRowsByContractId(
+            @Param("contractId") Long contractId,
+            @Param("artistId") Long artistId,
             @Param("contractStatus") ContractStatus contractStatus,
             @Param("listingStatus") ContractProductListingStatus listingStatus,
             @Param("inboundType") ContractProductStockMovementType inboundType

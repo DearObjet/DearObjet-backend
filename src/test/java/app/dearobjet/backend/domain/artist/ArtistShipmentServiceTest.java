@@ -1,12 +1,17 @@
 package app.dearobjet.backend.domain.artist;
 
+import app.dearobjet.backend.domain.artist.dto.ArtistShipmentProductListResponse;
 import app.dearobjet.backend.domain.artist.dto.ArtistShipmentShopListResponse;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.artist.service.ArtistShipmentService;
 import app.dearobjet.backend.domain.contract.ContractRepository;
+import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRow;
+import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
+import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
+import app.dearobjet.backend.domain.contract.repository.ContractProductRepository;
 import app.dearobjet.backend.domain.user.enums.Specialty;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
@@ -17,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +39,9 @@ class ArtistShipmentServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long ARTIST_ID = 10L;
     private static final Long CONTRACT_ID = 50L;
+    private static final Long CONTRACT_PRODUCT_ID = 70L;
     private static final Long SHOP_ID = 100L;
+    private static final BigDecimal SELLING_PRICE = new BigDecimal("15000.00");
     private static final LocalDate CONTRACT_START_DATE = LocalDate.of(2026, 5, 1);
     private static final LocalDate CONTRACT_END_DATE = LocalDate.of(2026, 12, 31);
     private static final LocalDateTime RECENT_STOCKED_AT = LocalDateTime.of(2026, 5, 3, 10, 0);
@@ -46,6 +54,9 @@ class ArtistShipmentServiceTest {
 
     @Mock
     private ContractRepository contractRepository;
+
+    @Mock
+    private ContractProductRepository contractProductRepository;
 
     @Test
     @DisplayName("출고관리 입점 매장 목록에서 입고확인 상태를 함께 반환한다")
@@ -83,10 +94,86 @@ class ArtistShipmentServiceTest {
                 .hasMessage("작가 정보를 찾을 수 없습니다.");
     }
 
+    @Test
+    @DisplayName("출고리스트는 승인 계약의 출고상품 요약을 반환한다")
+    void givenApprovedContract_whenGetShipmentProducts_thenReturnShipmentProducts() {
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist()));
+        given(contractRepository.findContractByIdAndArtistId(CONTRACT_ID, ARTIST_ID))
+                .willReturn(Optional.of(contract(ContractStatus.APPROVED)));
+        given(contractProductRepository.findShipmentProductRowsByContractId(
+                CONTRACT_ID,
+                ARTIST_ID,
+                ContractStatus.APPROVED,
+                ContractProductListingStatus.ACTIVE,
+                ContractProductStockMovementType.INBOUND
+        )).willReturn(List.of(shipmentProductRow(CONTRACT_PRODUCT_ID, "세라믹 컵", 10L)));
+
+        ArtistShipmentProductListResponse response = artistShipmentService.getShipmentProducts(USER_ID, CONTRACT_ID);
+
+        assertThat(response.getContractId()).isEqualTo(CONTRACT_ID);
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getContractProductId()).isEqualTo(CONTRACT_PRODUCT_ID);
+        assertThat(response.getItems().get(0).getProductName()).isEqualTo("세라믹 컵");
+        assertThat(response.getItems().get(0).getTotalShipmentQuantity()).isEqualTo(10L);
+        assertThat(response.getItems().get(0).getSellingPrice()).isEqualByComparingTo(SELLING_PRICE);
+    }
+
+    @Test
+    @DisplayName("승인 계약이 아니면 출고리스트를 조회할 수 없다")
+    void givenNotApprovedContract_whenGetShipmentProducts_thenThrowNotFound() {
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist()));
+        given(contractRepository.findContractByIdAndArtistId(CONTRACT_ID, ARTIST_ID))
+                .willReturn(Optional.of(contract(ContractStatus.PENDING)));
+
+        assertThatThrownBy(() -> artistShipmentService.getShipmentProducts(USER_ID, CONTRACT_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("계약서 정보를 찾을 수 없습니다.");
+    }
+
     private Artist artist() {
         return Artist.builder()
                 .id(ARTIST_ID)
                 .build();
+    }
+
+    private ShopArtistContract contract(ContractStatus contractStatus) {
+        return ShopArtistContract.builder()
+                .shopArtistContractsId(CONTRACT_ID)
+                .contractStatus(contractStatus)
+                .build();
+    }
+
+    private ArtistShipmentProductRow shipmentProductRow(
+            Long contractProductId,
+            String productName,
+            Long totalShipmentQuantity
+    ) {
+        return new ArtistShipmentProductRow() {
+            @Override
+            public Long getContractProductId() {
+                return contractProductId;
+            }
+
+            @Override
+            public String getProductImageUrl() {
+                return "https://image.test/products/cup.png";
+            }
+
+            @Override
+            public String getProductName() {
+                return productName;
+            }
+
+            @Override
+            public Long getTotalShipmentQuantity() {
+                return totalShipmentQuantity;
+            }
+
+            @Override
+            public BigDecimal getSellingPrice() {
+                return SELLING_PRICE;
+            }
+        };
     }
 
     private ArtistShipmentShopRow shipmentShopRow(
