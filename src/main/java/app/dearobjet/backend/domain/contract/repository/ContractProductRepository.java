@@ -40,7 +40,8 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
               and sac.shop.shopId = :shopId
               and sac.contractStatus = :contractStatus
               and cp.listingStatus = :listingStatus
-            group by cp.contractProductsId,
+            group by sac.shopArtistContractsId,
+                     cp.contractProductsId,
                      p.productUrl,
                      p.productName,
                      cp.sellingPrice,
@@ -62,7 +63,8 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
     );
 
     @Query("""
-            select cp.contractProductsId as contractProductId,
+            select sac.shopArtistContractsId as contractId,
+                   cp.contractProductsId as contractProductId,
                    p.productUrl as productImageUrl,
                    p.productName as productName,
                    coalesce(sum(m.quantityDelta), 0) as totalShipmentQuantity,
@@ -95,6 +97,41 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
             @Param("artistId") Long artistId,
             @Param("contractStatus") ContractStatus contractStatus,
             @Param("listingStatus") ContractProductListingStatus listingStatus,
+            @Param("inboundType") ContractProductStockMovementType inboundType
+    );
+
+    @Query("""
+            select sac.shopArtistContractsId as contractId,
+                   cp.contractProductsId as contractProductId,
+                   p.productUrl as productImageUrl,
+                   p.productName as productName,
+                   coalesce(sum(m.quantityDelta), 0) as totalShipmentQuantity,
+                   cp.sellingPrice as sellingPrice,
+                   sac.commissionType as commissionType,
+                   sac.commissionValue as commissionValue,
+                   cp.unitSettlementAmount as unitSettlementAmount
+            from ContractProduct cp
+            join cp.shopArtistContract sac
+            join cp.product p
+            left join ContractProductStockMovement m
+                on m.contractProduct = cp
+               and m.movementType = :inboundType
+            where sac.shopArtistContractsId in :contractIds
+              and sac.artist.id = :artistId
+            group by sac.shopArtistContractsId,
+                     cp.contractProductsId,
+                     p.productUrl,
+                     p.productName,
+                     cp.sellingPrice,
+                     sac.commissionType,
+                     sac.commissionValue,
+                     cp.unitSettlementAmount,
+                     cp.recentStockedAt
+            order by sac.shopArtistContractsId desc, cp.recentStockedAt desc, cp.contractProductsId desc
+            """)
+    List<ArtistShipmentProductRow> findShipmentProductRowsByContractIds(
+            @Param("contractIds") List<Long> contractIds,
+            @Param("artistId") Long artistId,
             @Param("inboundType") ContractProductStockMovementType inboundType
     );
 

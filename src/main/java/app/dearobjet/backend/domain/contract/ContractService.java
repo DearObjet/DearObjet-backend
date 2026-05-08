@@ -61,12 +61,6 @@ public class ContractService {
             ContractStatus.ENDED
     );
 
-    private static final List<ContractStatus> ARTIST_SUGGESTION_EXCLUDED_STATUSES = List.of(
-            ContractStatus.PENDING,
-            ContractStatus.APPROVED,
-            ContractStatus.ENDED
-    );
-
     private static final List<ContractStatus> MANAGED_SHOP_CONTRACT_STATUSES = List.of(
             ContractStatus.PENDING,
             ContractStatus.APPROVED,
@@ -114,7 +108,9 @@ public class ContractService {
                 shop.getShopId(),
                 Role.ARTIST,
                 UserStatus.ACTIVE,
-                ARTIST_SUGGESTION_EXCLUDED_STATUSES
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                LocalDate.now()
         ));
 
         Collections.shuffle(rows);
@@ -138,7 +134,9 @@ public class ContractService {
                         shop.getShopId(),
                         Role.ARTIST,
                         UserStatus.ACTIVE,
-                        ARTIST_SUGGESTION_EXCLUDED_STATUSES,
+                        ContractStatus.PENDING,
+                        ContractStatus.APPROVED,
+                        LocalDate.now(),
                         "%" + normalizedKeyword + "%",
                         PageRequest.of(0, ARTIST_ACCOUNT_SEARCH_LIMIT)
                 )

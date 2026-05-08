@@ -16,9 +16,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ArtistShipmentService {
+
+    private static final List<ContractStatus> SHIPMENT_PRODUCT_CONTRACT_STATUSES = List.of(
+            ContractStatus.APPROVED,
+            ContractStatus.ENDED,
+            ContractStatus.TERMINATED
+    );
 
     private final ArtistRepository artistRepository;
     private final ContractRepository contractRepository;
@@ -32,23 +41,26 @@ public class ArtistShipmentService {
                 contractRepository.findShipmentShopRowsByArtistId(
                         artist.getId(),
                         ContractStatus.APPROVED,
-                        ContractProductListingStatus.ACTIVE
+                        ContractProductListingStatus.ACTIVE,
+                        LocalDate.now()
                 )
         );
     }
 
     @Transactional(readOnly = true)
-    public ArtistShipmentProductListResponse getShipmentProducts(Long userId, Long contractId) {
+    public ArtistShipmentProductListResponse getShipmentProducts(Long userId, Long shopId) {
         Artist artist = getArtistByUserId(userId);
-        ShopArtistContract contract = getApprovedContractByArtist(contractId, artist.getId());
+        List<ShopArtistContract> contracts = getShipmentProductContracts(artist.getId(), shopId);
+        List<Long> contractIds = contracts.stream()
+                .map(ShopArtistContract::getShopArtistContractsId)
+                .toList();
 
         return ArtistShipmentProductListResponse.from(
-                contract.getShopArtistContractsId(),
-                contractProductRepository.findShipmentProductRowsByContractId(
-                        contractId,
+                shopId,
+                contracts,
+                contractProductRepository.findShipmentProductRowsByContractIds(
+                        contractIds,
                         artist.getId(),
-                        ContractStatus.APPROVED,
-                        ContractProductListingStatus.ACTIVE,
                         ContractProductStockMovementType.INBOUND
                 )
         );
@@ -62,18 +74,18 @@ public class ArtistShipmentService {
                 ));
     }
 
-    private ShopArtistContract getApprovedContractByArtist(Long contractId, Long artistId) {
-        ShopArtistContract contract = contractRepository.findContractByIdAndArtistId(contractId, artistId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        ErrorCode.ENTITY_NOT_FOUND,
-                        "계약서 정보를 찾을 수 없습니다."
-                ));
-        if (contract.getContractStatus() != ContractStatus.APPROVED) {
+    private List<ShopArtistContract> getShipmentProductContracts(Long artistId, Long shopId) {
+        List<ShopArtistContract> contracts = contractRepository.findShipmentProductContractsByArtistIdAndShopId(
+                        artistId,
+                        shopId,
+                        SHIPMENT_PRODUCT_CONTRACT_STATUSES
+                );
+        if (contracts.isEmpty()) {
             throw new EntityNotFoundException(
                     ErrorCode.ENTITY_NOT_FOUND,
                     "계약서 정보를 찾을 수 없습니다."
             );
         }
-        return contract;
+        return contracts;
     }
 }
