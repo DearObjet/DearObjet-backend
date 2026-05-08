@@ -1,6 +1,7 @@
 package app.dearobjet.backend.domain.artist.dto;
 
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentProductRow;
+import app.dearobjet.backend.domain.contract.enums.CommissionType;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,6 +17,9 @@ public class ArtistShipmentProductItemResponse {
     private final String productName;
     private final Long totalShipmentQuantity;
     private final BigDecimal sellingPrice;
+    private final CommissionType commissionType;
+    private final BigDecimal commissionValue;
+    private final BigDecimal unitSettlementAmount;
 
     public static ArtistShipmentProductItemResponse from(ArtistShipmentProductRow row) {
         return new ArtistShipmentProductItemResponse(
@@ -23,7 +27,10 @@ public class ArtistShipmentProductItemResponse {
                 row.getProductImageUrl(),
                 row.getProductName(),
                 row.getTotalShipmentQuantity(),
-                row.getSellingPrice()
+                row.getSellingPrice(),
+                row.getCommissionType(),
+                row.getCommissionValue(),
+                row.getUnitSettlementAmount()
         );
     }
 }

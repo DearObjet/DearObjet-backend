@@ -66,7 +66,10 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
                    p.productUrl as productImageUrl,
                    p.productName as productName,
                    coalesce(sum(m.quantityDelta), 0) as totalShipmentQuantity,
-                   cp.sellingPrice as sellingPrice
+                   cp.sellingPrice as sellingPrice,
+                   sac.commissionType as commissionType,
+                   sac.commissionValue as commissionValue,
+                   cp.unitSettlementAmount as unitSettlementAmount
             from ContractProduct cp
             join cp.shopArtistContract sac
             join cp.product p
@@ -81,6 +84,9 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
                      p.productUrl,
                      p.productName,
                      cp.sellingPrice,
+                     sac.commissionType,
+                     sac.commissionValue,
+                     cp.unitSettlementAmount,
                      cp.recentStockedAt
             order by cp.recentStockedAt desc, cp.contractProductsId desc
             """)

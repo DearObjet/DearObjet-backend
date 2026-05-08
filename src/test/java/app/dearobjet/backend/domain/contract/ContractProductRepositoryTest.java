@@ -236,7 +236,11 @@ class ContractProductRepositoryTest {
         assertThat(shippedRow.getTotalShipmentQuantity()).isEqualTo(CUP_INBOUND_QUANTITY + PLATE_INBOUND_QUANTITY);
         assertThat(shippedRow.getProductImageUrl()).isEqualTo("https://image.test/products/shipped-cup.png");
         assertThat(shippedRow.getSellingPrice()).isEqualByComparingTo(CUP_SELLING_PRICE);
+        assertThat(shippedRow.getCommissionType()).isEqualTo(CommissionType.RATE);
+        assertThat(shippedRow.getCommissionValue()).isEqualByComparingTo(DEFAULT_COMMISSION_VALUE);
+        assertThat(shippedRow.getUnitSettlementAmount()).isEqualByComparingTo(CUP_UNIT_SETTLEMENT_AMOUNT);
         assertThat(pendingRow.getTotalShipmentQuantity()).isZero();
+        assertThat(pendingRow.getUnitSettlementAmount()).isEqualByComparingTo(new BigDecimal("7200.00"));
         assertThat(rows).extracting("productName").doesNotContain("종료된 상품");
     }
 
