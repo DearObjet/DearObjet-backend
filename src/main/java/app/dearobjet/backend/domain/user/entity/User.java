@@ -44,7 +44,7 @@ public class User extends BaseTimeEntity {
     private String profileUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "user_status", nullable = false)
+    @Column(name = "user_status", nullable = false, length = 20)
     private UserStatus userStatus;
 
     @Column(name = "social_id")

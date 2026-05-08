@@ -28,14 +28,14 @@ public class ArtistShipmentController {
         return ApiResponse.of(artistShipmentService.getShipmentShops(resolveUserId(userDetails, userId)));
     }
 
-    @GetMapping("/shops/{contractId}/products")
+    @GetMapping("/shops/{shopId}/products")
     public ApiResponse<ArtistShipmentProductListResponse> getShipmentProducts(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) Long userId,
-            @PathVariable Long contractId
+            @PathVariable Long shopId
     ) {
         return ApiResponse.of(
-                artistShipmentService.getShipmentProducts(resolveUserId(userDetails, userId), contractId)
+                artistShipmentService.getShipmentProducts(resolveUserId(userDetails, userId), shopId)
         );
     }
 

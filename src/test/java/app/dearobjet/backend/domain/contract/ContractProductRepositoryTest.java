@@ -70,6 +70,7 @@ class ContractProductRepositoryTest {
     private static final BigDecimal CUP_UNIT_SETTLEMENT_AMOUNT = new BigDecimal("9600.00");
     private static final LocalDate CONTRACT_START_DATE = LocalDate.of(2026, 5, 1);
     private static final LocalDate CONTRACT_END_DATE = LocalDate.of(2026, 12, 31);
+    private static final LocalDate QUERY_TODAY = LocalDate.of(2026, 5, 8);
     private static final LocalDateTime CUP_INBOUND_AT = LocalDateTime.of(2026, 4, 28, 10, 0);
     private static final LocalDateTime CUP_SALE_AT = LocalDateTime.of(2026, 4, 28, 12, 0);
     private static final LocalDateTime PLATE_INBOUND_AT = LocalDateTime.of(2026, 4, 27, 14, 30);
@@ -245,6 +246,133 @@ class ContractProductRepositoryTest {
     }
 
     @Test
+    @DisplayName("출고리스트는 소품샵의 계약 이력을 계약별 품목 상세로 조회한다")
+    void givenShopContractHistory_whenQueryShipmentProducts_thenReturnRowsByContract() {
+        Artist artist = createArtist(
+                createUser("shipment-history-artist@test.com", "출고이력 작가", Role.ARTIST, "01097300001", null),
+                "출고이력 작가",
+                Specialty.CERAMIC
+        );
+        Shop shop = createShop(
+                createUser("shipment-history-shop@test.com", "출고이력 소품샵", Role.SHOP, "01097300002", null),
+                "출고이력 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        Shop otherShop = createShop(
+                createUser("shipment-history-other-shop@test.com", "출고이력 다른샵", Role.SHOP, "01097300003", null),
+                "출고이력 다른샵",
+                Specialty.LIVING_GOODS
+        );
+        ShopArtistContract approvedContract = createContract(
+                artist,
+                shop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        ShopArtistContract endedContract = createContract(
+                artist,
+                shop,
+                ContractStatus.ENDED,
+                ContractRequestType.NONE,
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 2, 1)
+        );
+        ShopArtistContract terminatedContract = createContract(
+                artist,
+                shop,
+                ContractStatus.TERMINATED,
+                ContractRequestType.NONE,
+                LocalDate.of(2026, 2, 2),
+                LocalDate.of(2026, 3, 1)
+        );
+        createContract(artist, shop, ContractStatus.PENDING, ContractRequestType.NONE, null, null);
+        createContract(artist, shop, ContractStatus.REJECTED, ContractRequestType.NONE, null, null);
+        createContract(artist, otherShop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+
+        Product approvedProduct = createProduct(
+                artist,
+                "현재 계약 컵",
+                CUP_PRICE,
+                "https://image.test/products/current-cup.png"
+        );
+        Product endedProduct = createProduct(
+                artist,
+                "만료 계약 접시",
+                PLATE_PRICE,
+                "https://image.test/products/ended-plate.png"
+        );
+        Product terminatedProduct = createProduct(
+                artist,
+                "해지 계약 화병",
+                PLATE_PRICE,
+                "https://image.test/products/terminated-vase.png"
+        );
+        ContractProduct approvedInventory = createContractProduct(
+                approvedContract,
+                approvedProduct,
+                CUP_SELLING_PRICE,
+                CUP_MARGIN_AMOUNT,
+                CUP_UNIT_SETTLEMENT_AMOUNT
+        );
+        ContractProduct endedInventory = ContractProduct.builder()
+                .shopArtistContract(endedContract)
+                .product(endedProduct)
+                .listingStatus(ContractProductListingStatus.ENDED)
+                .sellingPrice(PLATE_SELLING_PRICE)
+                .unitSettlementAmount(new BigDecimal("7200.00"))
+                .build();
+        ContractProduct terminatedInventory = createContractProduct(
+                terminatedContract,
+                terminatedProduct,
+                PLATE_SELLING_PRICE,
+                new BigDecimal("1800.00"),
+                new BigDecimal("7200.00")
+        );
+
+        ContractProductStockMovement approvedInbound =
+                approvedInventory.applyInbound(CUP_INBOUND_QUANTITY, CUP_INBOUND_AT, ACTOR_USER_ID, "현재 계약 입고");
+        ContractProductStockMovement terminatedInbound =
+                terminatedInventory.applyInbound(PLATE_INBOUND_QUANTITY, PLATE_INBOUND_AT, ACTOR_USER_ID, "해지 계약 입고");
+        contractProductRepository.save(approvedInventory);
+        contractProductRepository.save(endedInventory);
+        contractProductRepository.save(terminatedInventory);
+        saveMovement(approvedInbound);
+        saveMovement(terminatedInbound);
+        flushAndClear();
+
+        List<ShopArtistContract> contracts = contractRepository.findShipmentProductContractsByArtistIdAndShopId(
+                artist.getId(),
+                shop.getShopId(),
+                List.of(ContractStatus.APPROVED, ContractStatus.ENDED, ContractStatus.TERMINATED)
+        );
+        List<ArtistShipmentProductRow> rows = contractProductRepository.findShipmentProductRowsByContractIds(
+                contracts.stream()
+                        .map(ShopArtistContract::getShopArtistContractsId)
+                        .toList(),
+                artist.getId(),
+                ContractProductStockMovementType.INBOUND
+        );
+
+        assertThat(contracts).extracting(ShopArtistContract::getContractStatus)
+                .containsExactly(ContractStatus.TERMINATED, ContractStatus.ENDED, ContractStatus.APPROVED);
+        assertThat(rows).extracting("productName")
+                .containsExactly("해지 계약 화병", "만료 계약 접시", "현재 계약 컵");
+        assertThat(findShipmentProductRow(rows, "현재 계약 컵").getContractId())
+                .isEqualTo(approvedContract.getShopArtistContractsId());
+        assertThat(findShipmentProductRow(rows, "현재 계약 컵").getTotalShipmentQuantity())
+                .isEqualTo(CUP_INBOUND_QUANTITY);
+        assertThat(findShipmentProductRow(rows, "만료 계약 접시").getContractId())
+                .isEqualTo(endedContract.getShopArtistContractsId());
+        assertThat(findShipmentProductRow(rows, "만료 계약 접시").getTotalShipmentQuantity()).isZero();
+        assertThat(findShipmentProductRow(rows, "해지 계약 화병").getContractId())
+                .isEqualTo(terminatedContract.getShopArtistContractsId());
+        assertThat(findShipmentProductRow(rows, "해지 계약 화병").getTotalShipmentQuantity())
+                .isEqualTo(PLATE_INBOUND_QUANTITY);
+    }
+
+    @Test
     @DisplayName("출고관리 입점 매장 목록은 승인 계약 소품샵만 반환한다")
     void givenArtistContracts_whenQueryShipmentShops_thenReturnApprovedShopsOnly() {
         Artist artist = createArtist(
@@ -282,7 +410,8 @@ class ContractProductRepositoryTest {
         List<ArtistShipmentShopRow> rows = contractRepository.findShipmentShopRowsByArtistId(
                 artist.getId(),
                 ContractStatus.APPROVED,
-                ContractProductListingStatus.ACTIVE
+                ContractProductListingStatus.ACTIVE,
+                QUERY_TODAY
         );
 
         assertThat(rows).hasSize(1);
@@ -292,6 +421,81 @@ class ContractProductRepositoryTest {
         assertThat(rows.get(0).getContractStartDate()).isEqualTo(CONTRACT_START_DATE);
         assertThat(rows.get(0).getContractEndDate()).isEqualTo(CONTRACT_END_DATE);
         assertThat(rows.get(0).getRecentStockedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("출고관리 입점 매장 목록은 같은 소품샵을 중복 반환하지 않는다")
+    void givenDuplicatedApprovedShopContracts_whenQueryShipmentShops_thenReturnLatestShopOnly() {
+        Artist artist = createArtist(
+                createUser("shipment-dedup-artist@test.com", "출고중복 작가", Role.ARTIST, "01097100001", null),
+                "출고중복 작가",
+                Specialty.CERAMIC
+        );
+        Shop shop = createShop(
+                createUser("shipment-dedup-shop@test.com", "중복 소품샵", Role.SHOP, "01097100002", null),
+                "중복 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        ShopArtistContract oldContract = createContract(
+                artist,
+                shop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 6, 30)
+        );
+        ShopArtistContract latestContract = createContract(
+                artist,
+                shop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        flushAndClear();
+
+        List<ArtistShipmentShopRow> rows = contractRepository.findShipmentShopRowsByArtistId(
+                artist.getId(),
+                ContractStatus.APPROVED,
+                ContractProductListingStatus.ACTIVE,
+                QUERY_TODAY
+        );
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getShopId()).isEqualTo(shop.getShopId());
+        assertThat(rows.get(0).getContractId()).isEqualTo(latestContract.getShopArtistContractsId());
+        assertThat(rows.get(0).getContractId()).isNotEqualTo(oldContract.getShopArtistContractsId());
+    }
+
+    @Test
+    @DisplayName("작가 출고리스트 조회용 계약은 소품샵 기준 최신 승인 계약을 반환한다")
+    void givenApprovedShopContract_whenFindByArtistAndShop_thenReturnLatestContract() {
+        Artist artist = createArtist(
+                createUser("shipment-shop-contract-artist@test.com", "소품샵계약 작가", Role.ARTIST, "01097200001", null),
+                "소품샵계약 작가",
+                Specialty.CERAMIC
+        );
+        Shop shop = createShop(
+                createUser("shipment-shop-contract-shop@test.com", "소품샵계약 매장", Role.SHOP, "01097200002", null),
+                "소품샵계약 매장",
+                Specialty.HANDMADE_CRAFT
+        );
+        ShopArtistContract oldContract = createContract(artist, shop);
+        ShopArtistContract latestContract = createContract(artist, shop);
+        createContract(artist, shop, ContractStatus.PENDING, ContractRequestType.NONE, null, null);
+        flushAndClear();
+
+        List<ShopArtistContract> contracts = contractRepository.findApprovedContractsByArtistIdAndShopId(
+                artist.getId(),
+                shop.getShopId(),
+                ContractStatus.APPROVED
+        );
+
+        assertThat(contracts).extracting(ShopArtistContract::getShopArtistContractsId)
+                .containsExactly(
+                        latestContract.getShopArtistContractsId(),
+                        oldContract.getShopArtistContractsId()
+                );
     }
 
     @Test
@@ -359,7 +563,8 @@ class ContractProductRepositoryTest {
         List<ArtistShipmentShopRow> rows = contractRepository.findShipmentShopRowsByArtistId(
                 artist.getId(),
                 ContractStatus.APPROVED,
-                ContractProductListingStatus.ACTIVE
+                ContractProductListingStatus.ACTIVE,
+                QUERY_TODAY
         );
 
         assertThat(rows).extracting("contractId")
@@ -557,8 +762,13 @@ class ContractProductRepositoryTest {
                 Specialty.CERAMIC
         );
         Artist endedArtist = createArtist(
-                createUser("suggestion-ended@test.com", "만료 제외 작가", Role.ARTIST, "01093000009", null),
-                "만료 제외 작가",
+                createUser("suggestion-ended@test.com", "만료 가능 작가", Role.ARTIST, "01093000009", null),
+                "만료 가능 작가",
+                Specialty.CERAMIC
+        );
+        Artist expiredApprovedArtist = createArtist(
+                createUser("suggestion-expired-approved@test.com", "종료일 경과 작가", Role.ARTIST, "01093000010", null),
+                "종료일 경과 작가",
                 Specialty.CERAMIC
         );
 
@@ -568,13 +778,23 @@ class ContractProductRepositoryTest {
         createContract(pendingArtist, shop, ContractStatus.PENDING, ContractRequestType.EXTENSION, null, null);
         createContract(approvedArtist, shop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
         createContract(endedArtist, shop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        createContract(
+                expiredApprovedArtist,
+                shop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                QUERY_TODAY.minusMonths(2),
+                QUERY_TODAY.minusDays(1)
+        );
         flushAndClear();
 
         var rows = contractRepository.findArtistSuggestionRows(
                 shop.getShopId(),
                 Role.ARTIST,
                 UserStatus.ACTIVE,
-                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                QUERY_TODAY
         );
 
         assertThat(rows).extracting("artistName")
@@ -582,12 +802,13 @@ class ContractProductRepositoryTest {
                         "추천 가능 작가",
                         "거절 이력 작가",
                         "해지 이력 작가",
-                        "다른샵 계약 작가"
+                        "다른샵 계약 작가",
+                        "만료 가능 작가",
+                        "종료일 경과 작가"
                 )
                 .doesNotContain(
                         "대기 제외 작가",
-                        "계약 제외 작가",
-                        "만료 제외 작가"
+                        "계약 제외 작가"
                 );
         assertThat(findSuggestionRow(rows, "추천 가능 작가").getArtistId())
                 .isEqualTo(eligibleArtist.getId());
@@ -641,7 +862,9 @@ class ContractProductRepositoryTest {
                 shop.getShopId(),
                 Role.ARTIST,
                 UserStatus.ACTIVE,
-                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                QUERY_TODAY,
                 "%postman%",
                 PageRequest.of(0, 10)
         );
@@ -717,8 +940,13 @@ class ContractProductRepositoryTest {
                 Specialty.CERAMIC
         );
         Artist endedArtist = createArtist(
-                createUser("account-ended@test.com", "검색 만료 제외 작가", Role.ARTIST, "01095000009", null),
-                "계약 검색 만료 제외 작가",
+                createUser("account-ended@test.com", "검색 만료 가능 작가", Role.ARTIST, "01095000009", null),
+                "계약 검색 만료 가능 작가",
+                Specialty.CERAMIC
+        );
+        Artist expiredApprovedArtist = createArtist(
+                createUser("account-expired-approved@test.com", "검색 종료일 경과 작가", Role.ARTIST, "01095000010", null),
+                "계약 검색 종료일 경과 작가",
                 Specialty.CERAMIC
         );
 
@@ -728,13 +956,23 @@ class ContractProductRepositoryTest {
         createContract(pendingArtist, shop, ContractStatus.PENDING, ContractRequestType.EXTENSION, null, null);
         createContract(approvedArtist, shop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
         createContract(endedArtist, shop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        createContract(
+                expiredApprovedArtist,
+                shop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                QUERY_TODAY.minusMonths(2),
+                QUERY_TODAY.minusDays(1)
+        );
         flushAndClear();
 
         var rows = contractRepository.searchArtistAccountRows(
                 shop.getShopId(),
                 Role.ARTIST,
                 UserStatus.ACTIVE,
-                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                QUERY_TODAY,
                 "%계약 검색%",
                 PageRequest.of(0, 10)
         );
@@ -744,12 +982,13 @@ class ContractProductRepositoryTest {
                         "계약 검색 가능 작가",
                         "계약 검색 거절 이력 작가",
                         "계약 검색 해지 이력 작가",
-                        "계약 검색 다른샵 계약 작가"
+                        "계약 검색 다른샵 계약 작가",
+                        "계약 검색 만료 가능 작가",
+                        "계약 검색 종료일 경과 작가"
                 )
                 .doesNotContain(
                         "계약 검색 대기 제외 작가",
-                        "계약 검색 승인 제외 작가",
-                        "계약 검색 만료 제외 작가"
+                        "계약 검색 승인 제외 작가"
                 );
         assertThat(findAccountSearchRow(rows, "계약 검색 가능 작가").getArtistId())
                 .isEqualTo(eligibleArtist.getId());

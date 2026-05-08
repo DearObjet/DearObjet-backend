@@ -87,6 +87,22 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
                and cp.listingStatus = :listingStatus
             where c.artist.id = :artistId
               and c.contractStatus = :contractStatus
+              and (
+                  c.contractEndDate is null
+                  or c.contractEndDate >= :today
+              )
+              and not exists (
+                  select 1
+                  from ShopArtistContract c2
+                  where c2.artist = c.artist
+                    and c2.shop = c.shop
+                    and c2.contractStatus = :contractStatus
+                    and (
+                        c2.contractEndDate is null
+                        or c2.contractEndDate >= :today
+                    )
+                    and c2.shopArtistContractsId > c.shopArtistContractsId
+              )
             group by c.shopArtistContractsId,
                      s.shopId,
                      bp.businessName,
@@ -101,7 +117,38 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
     List<ArtistShipmentShopRow> findShipmentShopRowsByArtistId(
             @Param("artistId") Long artistId,
             @Param("contractStatus") ContractStatus contractStatus,
-            @Param("listingStatus") ContractProductListingStatus listingStatus
+            @Param("listingStatus") ContractProductListingStatus listingStatus,
+            @Param("today") java.time.LocalDate today
+    );
+
+    @Query("""
+            select c
+            from ShopArtistContract c
+            join fetch c.shop s
+            join fetch s.businessProfile
+            where c.artist.id = :artistId
+              and s.shopId = :shopId
+              and c.contractStatus = :contractStatus
+            order by c.shopArtistContractsId desc
+            """)
+    List<ShopArtistContract> findApprovedContractsByArtistIdAndShopId(
+            @Param("artistId") Long artistId,
+            @Param("shopId") Long shopId,
+            @Param("contractStatus") ContractStatus contractStatus
+    );
+
+    @Query("""
+            select c
+            from ShopArtistContract c
+            where c.artist.id = :artistId
+              and c.shop.shopId = :shopId
+              and c.contractStatus in :contractStatuses
+            order by c.shopArtistContractsId desc
+            """)
+    List<ShopArtistContract> findShipmentProductContractsByArtistIdAndShopId(
+            @Param("artistId") Long artistId,
+            @Param("shopId") Long shopId,
+            @Param("contractStatuses") List<ContractStatus> contractStatuses
     );
 
     @Query("""
@@ -262,14 +309,25 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
                   from ShopArtistContract c
                   where c.shop.shopId = :shopId
                     and c.artist = a
-                    and c.contractStatus in :excludedStatuses
+                    and (
+                        c.contractStatus = :pendingStatus
+                        or (
+                            c.contractStatus = :approvedStatus
+                            and (
+                                c.contractEndDate is null
+                                or c.contractEndDate >= :today
+                            )
+                        )
+                    )
               )
             """)
     List<ArtistSuggestionRow> findArtistSuggestionRows(
             @Param("shopId") Long shopId,
             @Param("artistRole") Role artistRole,
             @Param("activeStatus") UserStatus activeStatus,
-            @Param("excludedStatuses") List<ContractStatus> excludedStatuses
+            @Param("pendingStatus") ContractStatus pendingStatus,
+            @Param("approvedStatus") ContractStatus approvedStatus,
+            @Param("today") java.time.LocalDate today
     );
 
     @Query("""
@@ -296,7 +354,16 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
                   from ShopArtistContract c
                   where c.shop.shopId = :shopId
                     and c.artist = a
-                    and c.contractStatus in :excludedStatuses
+                    and (
+                        c.contractStatus = :pendingStatus
+                        or (
+                            c.contractStatus = :approvedStatus
+                            and (
+                                c.contractEndDate is null
+                                or c.contractEndDate >= :today
+                            )
+                        )
+                    )
               )
             order by bp.businessName asc, a.id desc
             """)
@@ -304,7 +371,9 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             @Param("shopId") Long shopId,
             @Param("artistRole") Role artistRole,
             @Param("activeStatus") UserStatus activeStatus,
-            @Param("excludedStatuses") List<ContractStatus> excludedStatuses,
+            @Param("pendingStatus") ContractStatus pendingStatus,
+            @Param("approvedStatus") ContractStatus approvedStatus,
+            @Param("today") java.time.LocalDate today,
             @Param("keyword") String keyword,
             Pageable pageable
     );

@@ -57,6 +57,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -127,10 +129,12 @@ class ContractServiceTest {
 
         given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
         given(contractRepository.findArtistSuggestionRows(
-                SHOP_ID,
-                Role.ARTIST,
-                UserStatus.ACTIVE,
-                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+                eq(SHOP_ID),
+                eq(Role.ARTIST),
+                eq(UserStatus.ACTIVE),
+                eq(ContractStatus.PENDING),
+                eq(ContractStatus.APPROVED),
+                any(LocalDate.class)
         )).willReturn(rows);
 
         ArtistSuggestionListResponse response = contractService.getArtistSuggestions(USER_ID);
@@ -152,10 +156,12 @@ class ContractServiceTest {
 
         given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
         given(contractRepository.findArtistSuggestionRows(
-                SHOP_ID,
-                Role.ARTIST,
-                UserStatus.ACTIVE,
-                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+                eq(SHOP_ID),
+                eq(Role.ARTIST),
+                eq(UserStatus.ACTIVE),
+                eq(ContractStatus.PENDING),
+                eq(ContractStatus.APPROVED),
+                any(LocalDate.class)
         )).willReturn(List.of(artistSuggestionRow(ARTIST_ID, USER_ID + 100, "Postman 추천 작가")));
 
         ArtistSuggestionListResponse response = contractService.getArtistSuggestions(USER_ID);
@@ -175,12 +181,14 @@ class ContractServiceTest {
 
         given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
         given(contractRepository.searchArtistAccountRows(
-                SHOP_ID,
-                Role.ARTIST,
-                UserStatus.ACTIVE,
-                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED),
-                "%postman%",
-                org.springframework.data.domain.PageRequest.of(0, 10)
+                eq(SHOP_ID),
+                eq(Role.ARTIST),
+                eq(UserStatus.ACTIVE),
+                eq(ContractStatus.PENDING),
+                eq(ContractStatus.APPROVED),
+                any(LocalDate.class),
+                eq("%postman%"),
+                eq(org.springframework.data.domain.PageRequest.of(0, 10))
         )).willReturn(List.of(artistAccountSearchRow(ARTIST_ID, USER_ID + 100, "Postman 검색 작가")));
 
         ArtistAccountSearchResponse response = contractService.searchArtistAccounts(USER_ID, " Postman ");
