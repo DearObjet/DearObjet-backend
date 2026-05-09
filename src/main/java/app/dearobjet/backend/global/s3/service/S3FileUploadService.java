@@ -153,6 +153,34 @@ public class S3FileUploadService {
         }
     }
 
+    public String uploadStoryThumbnail(MultipartFile file, Long userId) {
+        validateImageFile(file, "스토리 썸네일 파일", MAX_IMAGE_FILE_SIZE_BYTES);
+
+        String key = buildStoryThumbnailKey(userId, file.getOriginalFilename());
+        String contentType = file.getContentType();
+
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
+            return buildPublicUrl(key);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 읽기에 실패했습니다.");
+        } catch (S3Exception e) {
+            String detailMessage = e.awsErrorDetails() == null
+                    ? e.getMessage()
+                    : e.awsErrorDetails().errorCode() + ": " + e.awsErrorDetails().errorMessage();
+            throw new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "S3 업로드에 실패했습니다. " + detailMessage
+            );
+        }
+    }
+
     private void validateFile(MultipartFile file, String fileLabel, long maxFileSizeBytes) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, fileLabel + "은(는) 필수입니다.");
@@ -213,6 +241,11 @@ public class S3FileUploadService {
     private String buildBankbookImageKey(Long userId, String originalFilename) {
         String extension = extractExtension(originalFilename);
         return "bankbook-image/" + userId + "/" + UUID.randomUUID() + extension;
+    }
+
+    private String buildStoryThumbnailKey(Long userId, String originalFilename) {
+        String extension = extractExtension(originalFilename);
+        return "story-thumbnail/" + userId + "/" + UUID.randomUUID() + extension;
     }
 
     private String extractExtension(String filename) {

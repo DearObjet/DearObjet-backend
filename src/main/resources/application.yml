@@ -3,7 +3,7 @@ spring:
     name: backend
 
   profiles:
-    active: dev # 인증인가가 필요하다면 prod로 변경
+    active: prod # 인증인가가 필요하다면 prod로 변경
 
   config:
     import: optional:file:.env[.properties]
@@ -20,7 +20,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create # update로 수정해야함
+      ddl-auto: update # update로 수정해야함
     properties:
       hibernate:
         format_sql: true
