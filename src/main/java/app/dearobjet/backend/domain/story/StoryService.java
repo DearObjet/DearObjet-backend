@@ -4,6 +4,8 @@ import app.dearobjet.backend.domain.story.dto.CreateStoryRequest;
 import app.dearobjet.backend.domain.story.dto.StoryListResponse;
 import app.dearobjet.backend.domain.story.dto.StoryResponse;
 import app.dearobjet.backend.domain.story.dto.UpdateStoryRequest;
+import app.dearobjet.backend.domain.shop.entity.Shop;
+import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
@@ -26,6 +28,7 @@ public class StoryService {
     private static final int STORY_PAGE_SIZE = 10;
 
     private final StoryRepository storyRepository;
+    private final ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final S3FileUploadService s3FileUploadService;
 
@@ -49,6 +52,18 @@ public class StoryService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
 
+        return getStoriesByUserId(userId, page);
+    }
+
+    @Transactional(readOnly = true)
+    public StoryListResponse getStoriesByShop(Long shopId, int page) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
+
+        return getStoriesByUserId(shop.getUser().getId(), page);
+    }
+
+    private StoryListResponse getStoriesByUserId(Long userId, int page) {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0),
                 STORY_PAGE_SIZE,
