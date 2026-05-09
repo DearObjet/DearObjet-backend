@@ -6,6 +6,7 @@ import app.dearobjet.backend.global.common.entity.BaseTimeEntity;
 import app.dearobjet.backend.global.exception.BusinessException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 
 @Entity
@@ -50,8 +51,29 @@ public class User extends BaseTimeEntity {
     @Column(name = "social_id")
     private String socialId;
 
+    @Column(name = "withdrawal_requested_at")
+    private LocalDateTime withdrawalRequestedAt;
+
     public void deactivate() {
         this.userStatus = UserStatus.INACTIVE;
+    }
+
+    public void requestWithdrawal() {
+        this.userStatus = UserStatus.INACTIVE;
+        this.withdrawalRequestedAt = LocalDateTime.now();
+    }
+
+    public void recoverWithdrawal() {
+        if (!isWithdrawalRequested()) {
+            return;
+        }
+
+        this.userStatus = UserStatus.ACTIVE;
+        this.withdrawalRequestedAt = null;
+    }
+
+    public boolean isWithdrawalRequested() {
+        return this.userStatus == UserStatus.INACTIVE && this.withdrawalRequestedAt != null;
     }
 
     public void completeRegistration(

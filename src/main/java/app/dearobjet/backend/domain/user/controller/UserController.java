@@ -85,6 +85,17 @@ public class UserController {
         ));
     }
 
+    @PostMapping("/me/withdrawal")
+    @Operation(summary = "회원탈퇴 요청")
+    public ResponseEntity<ApiResponse<Void>> requestWithdrawal(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        userService.requestWithdrawal(userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
     // CUSTOMER 가입 완료
     @PostMapping("/complete")
     @Operation(summary = "일반 사용자 가입")

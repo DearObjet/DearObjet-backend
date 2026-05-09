@@ -48,6 +48,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getOrCreateKakaoUser(String socialId, String email) {
         return userRepository.findBySocialId(socialId)
+                .map(user -> {
+                    user.recoverWithdrawal();
+                    return user;
+                })
                 .orElseGet(() -> createTempUser(socialId, email));
     }
 
@@ -256,6 +260,13 @@ public class UserServiceImpl implements UserService {
         User user = getUser(userId);
 
         user.deactivate();
+    }
+
+    @Override
+    public void requestWithdrawal(Long userId) {
+        User user = getUser(userId);
+
+        user.requestWithdrawal();
     }
 
     @Override

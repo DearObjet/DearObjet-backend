@@ -59,6 +59,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         UserDetails userDetails =
                 userDetailsService.loadUserByUsername(String.valueOf(userId));
 
+        if (!userDetails.isEnabled()) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
         Authentication authentication =
                 new UsernamePasswordAuthenticationToken(
                         userDetails,
