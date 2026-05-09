@@ -9,7 +9,9 @@ import app.dearobjet.backend.domain.story.dto.CreateStoryRequest;
 import app.dearobjet.backend.domain.story.dto.StoryListResponse;
 import app.dearobjet.backend.domain.story.dto.StoryResponse;
 import app.dearobjet.backend.domain.story.dto.UpdateStoryRequest;
+import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.user.entity.User;
+import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.s3.service.S3FileUploadService;
@@ -28,6 +30,9 @@ class StoryServiceTest {
 
     @Mock
     private StoryRepository storyRepository;
+
+    @Mock
+    private ShopRepository shopRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -96,6 +101,31 @@ class StoryServiceTest {
         assertThat(response.items())
                 .extracting(StoryListResponse.Item::storyId)
                 .containsExactly(2L, 1L);
+        assertThat(response.page()).isEqualTo(1);
+    }
+
+    @Test
+    void getStoriesByShop_returnsShopOwnerStories() {
+        User user = User.builder().id(1L).build();
+        Shop shop = Shop.builder()
+                .shopId(10L)
+                .user(user)
+                .build();
+        Story story = Story.builder()
+                .storyId(1L)
+                .thumbnailImageUrl("https://cdn/1.jpg")
+                .title("샵 스토리")
+                .content("내용")
+                .build();
+
+        given(shopRepository.findById(10L)).willReturn(Optional.of(shop));
+        given(storyRepository.findByUser_Id(any(), any()))
+                .willReturn(new PageImpl<>(List.of(story)));
+
+        StoryListResponse response = storyService.getStoriesByShop(10L, 1);
+
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).storyId()).isEqualTo(1L);
         assertThat(response.page()).isEqualTo(1);
     }
 
