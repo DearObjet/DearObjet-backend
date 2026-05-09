@@ -66,6 +66,23 @@ public class ArtistShipmentService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public ArtistShipmentProductListResponse getRecentShipmentProducts(Long userId, Long shopId) {
+        Artist artist = getArtistByUserId(userId);
+        ShopArtistContract recentContract = getRecentShipmentProductContract(artist.getId(), shopId);
+        List<ShopArtistContract> contracts = List.of(recentContract);
+
+        return ArtistShipmentProductListResponse.from(
+                shopId,
+                contracts,
+                contractProductRepository.findShipmentProductRowsByContractIds(
+                        List.of(recentContract.getShopArtistContractsId()),
+                        artist.getId(),
+                        ContractProductStockMovementType.INBOUND
+                )
+        );
+    }
+
     private Artist getArtistByUserId(Long userId) {
         return artistRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -87,5 +104,9 @@ public class ArtistShipmentService {
             );
         }
         return contracts;
+    }
+
+    private ShopArtistContract getRecentShipmentProductContract(Long artistId, Long shopId) {
+        return getShipmentProductContracts(artistId, shopId).get(0);
     }
 }

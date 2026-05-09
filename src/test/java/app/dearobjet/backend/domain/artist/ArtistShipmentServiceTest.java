@@ -160,6 +160,55 @@ class ArtistShipmentServiceTest {
                 .hasMessage("계약서 정보를 찾을 수 없습니다.");
     }
 
+    @Test
+    @DisplayName("최근 입고 내역은 소품샵의 최신 계약 품목 상세만 반환한다")
+    void givenShipmentContracts_whenGetRecentShipmentProducts_thenReturnLatestContractProductsOnly() {
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist()));
+        given(contractRepository.findShipmentProductContractsByArtistIdAndShopId(
+                ARTIST_ID,
+                SHOP_ID,
+                List.of(ContractStatus.APPROVED, ContractStatus.ENDED, ContractStatus.TERMINATED)
+        )).willReturn(List.of(
+                contract(CONTRACT_ID + 2, ContractStatus.APPROVED),
+                contract(CONTRACT_ID + 1, ContractStatus.TERMINATED),
+                contract(CONTRACT_ID, ContractStatus.ENDED)
+        ));
+        given(contractProductRepository.findShipmentProductRowsByContractIds(
+                List.of(CONTRACT_ID + 2),
+                ARTIST_ID,
+                ContractProductStockMovementType.INBOUND
+        )).willReturn(List.of(
+                shipmentProductRow(CONTRACT_ID + 2, CONTRACT_PRODUCT_ID + 2, "최근 계약 컵", 5L)
+        ));
+
+        ArtistShipmentProductListResponse response =
+                artistShipmentService.getRecentShipmentProducts(USER_ID, SHOP_ID);
+
+        assertThat(response.getShopId()).isEqualTo(SHOP_ID);
+        assertThat(response.getContracts()).hasSize(1);
+        assertThat(response.getContracts().get(0).getContractId()).isEqualTo(CONTRACT_ID + 2);
+        assertThat(response.getContracts().get(0).getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+        assertThat(response.getContracts().get(0).getItems()).hasSize(1);
+        assertThat(response.getContracts().get(0).getItems().get(0).getProductName()).isEqualTo("최근 계약 컵");
+        assertThat(response.getContracts().get(0).getItems().get(0).getTotalShipmentQuantity()).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("최근 입고 내역 조회 시 계약 이력이 없으면 조회할 수 없다")
+    void givenNoShipmentContract_whenGetRecentShipmentProducts_thenThrowNotFound() {
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist()));
+        given(contractRepository.findShipmentProductContractsByArtistIdAndShopId(
+                ARTIST_ID,
+                SHOP_ID,
+                List.of(ContractStatus.APPROVED, ContractStatus.ENDED, ContractStatus.TERMINATED)
+        ))
+                .willReturn(List.of());
+
+        assertThatThrownBy(() -> artistShipmentService.getRecentShipmentProducts(USER_ID, SHOP_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("계약서 정보를 찾을 수 없습니다.");
+    }
+
     private Artist artist() {
         return Artist.builder()
                 .id(ARTIST_ID)

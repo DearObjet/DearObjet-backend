@@ -39,6 +39,17 @@ public class ArtistShipmentController {
         );
     }
 
+    @GetMapping("/shops/{shopId}/recent-products")
+    public ApiResponse<ArtistShipmentProductListResponse> getRecentShipmentProducts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long shopId
+    ) {
+        return ApiResponse.of(
+                artistShipmentService.getRecentShipmentProducts(resolveUserId(userDetails, userId), shopId)
+        );
+    }
+
     private Long resolveUserId(CustomUserDetails userDetails, Long userId) {
         if (userDetails != null) {
             return userDetails.getUserId();
