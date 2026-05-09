@@ -140,6 +140,27 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
     @Query("""
             select c
             from ShopArtistContract c
+            join fetch c.shop s
+            join fetch s.businessProfile
+            where c.artist.id = :artistId
+              and s.shopId = :shopId
+              and c.contractStatus = :contractStatus
+              and (
+                  c.contractEndDate is null
+                  or c.contractEndDate >= :today
+              )
+            order by c.shopArtistContractsId desc
+            """)
+    List<ShopArtistContract> findCurrentApprovedContractsByArtistIdAndShopId(
+            @Param("artistId") Long artistId,
+            @Param("shopId") Long shopId,
+            @Param("contractStatus") ContractStatus contractStatus,
+            @Param("today") java.time.LocalDate today
+    );
+
+    @Query("""
+            select c
+            from ShopArtistContract c
             where c.artist.id = :artistId
               and c.shop.shopId = :shopId
               and c.contractStatus in :contractStatuses

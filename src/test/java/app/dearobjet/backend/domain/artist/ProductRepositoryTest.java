@@ -104,6 +104,28 @@ class ProductRepositoryTest {
     }
 
     @Test
+    @DisplayName("출고 가능 상품은 작가 보유 재고가 있고 상품명 검색어에 맞는 활성 상품만 조회한다")
+    void givenKeyword_whenFindShipmentAvailableProducts_thenReturnMatchedStockProducts() {
+        Artist artist = createArtist("artist-c@test.com", "Postman 출고 작가");
+        Artist otherArtist = createArtist("artist-d@test.com", "Postman 다른 출고 작가");
+        Product cup = createProduct(artist, "세라믹 컵", ProductStatus.ACTIVE, 5);
+        createProduct(artist, "세라믹 접시", ProductStatus.ACTIVE, 0);
+        createProduct(artist, "비활성 컵", ProductStatus.INACTIVE, 5);
+        createProduct(otherArtist, "다른 작가 컵", ProductStatus.ACTIVE, 5);
+
+        Page<Product> products = productRepository.findShipmentAvailableProducts(
+                artist.getId(),
+                ProductStatus.ACTIVE,
+                "컵",
+                PageRequest.of(FIRST_PAGE_INDEX, PAGE_SIZE)
+        );
+
+        assertThat(products.getContent())
+                .extracting(Product::getProductsId)
+                .containsExactly(cup.getProductsId());
+    }
+
+    @Test
     @DisplayName("상품 메모를 저장하고 조회한다")
     void givenProductMemo_whenSaveAndFind_thenReturnMemo() {
         Artist artist = createArtist("artist-a@test.com", "Postman 도자기 작가");
@@ -141,12 +163,17 @@ class ProductRepositoryTest {
     }
 
     private Product createProduct(Artist artist, String productName, ProductStatus status) {
+        return createProduct(artist, productName, status, 0);
+    }
+
+    private Product createProduct(Artist artist, String productName, ProductStatus status, int stockQuantity) {
         return productRepository.save(Product.builder()
                 .artist(artist)
                 .productName(productName)
                 .price(DEFAULT_PRICE)
                 .status(status)
                 .productUrl("https://image.test/products/" + productName + ".png")
+                .stockQuantity(stockQuantity)
                 .build());
     }
 }

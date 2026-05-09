@@ -150,4 +150,18 @@ public interface ContractProductRepository extends JpaRepository<ContractProduct
             @Param("contractStatus") ContractStatus contractStatus,
             @Param("listingStatus") ContractProductListingStatus listingStatus
     );
+
+    @Query("""
+            select cp
+            from ContractProduct cp
+            join fetch cp.product p
+            where cp.shopArtistContract.shopArtistContractsId = :contractId
+              and p.productsId in :productIds
+              and cp.listingStatus = :listingStatus
+            """)
+    List<ContractProduct> findActiveProductsByContractIdAndProductIds(
+            @Param("contractId") Long contractId,
+            @Param("productIds") List<Long> productIds,
+            @Param("listingStatus") ContractProductListingStatus listingStatus
+    );
 }
