@@ -54,6 +54,17 @@ public class ClassReservationController {
         return ApiResponse.of(classReservationService.createReservation(userDetails.getUserId(), request));
     }
 
+    @PostMapping("/class-reservations/{reservationId}/change")
+    public ApiResponse<CreateClassReservationResponse> changeReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId,
+            @Valid @RequestBody CreateClassReservationRequest request
+    ) {
+        return ApiResponse.of(
+                classReservationService.changeReservation(userDetails.getUserId(), reservationId, request)
+        );
+    }
+
     @PostMapping("/class-reservations/{reservationId}/cancel")
     public ApiResponse<Void> cancelReservation(
             @AuthenticationPrincipal CustomUserDetails userDetails,

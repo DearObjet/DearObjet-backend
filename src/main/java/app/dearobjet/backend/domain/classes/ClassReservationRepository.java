@@ -27,6 +27,12 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
 
     boolean existsByUser_IdAndReservationStatus(Long userId, ClassReservationStatus reservationStatus);
 
+    boolean existsByUser_IdAndReservationStatusAndReservationIdNot(
+            Long userId,
+            ClassReservationStatus reservationStatus,
+            Long reservationId
+    );
+
     Optional<ClassReservation> findByReservationIdAndUser_Id(Long reservationId, Long userId);
 
     List<ClassReservation> findByClasses_ClassesIdAndReservationTimeBetween(

@@ -121,14 +121,7 @@ public class ClassReservationService {
         ClassReservation reservation = classReservationRepository.findByReservationIdAndUser_Id(reservationId, userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 내역을 찾을 수 없습니다."));
 
-        if (reservation.getReservationStatus() == ClassReservationStatus.CANCELED) {
-            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "이미 취소된 예약입니다.");
-        }
-
-        if (reservation.getReservationTime() != null && reservation.getReservationTime().isBefore(LocalDateTime.now())) {
-            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "지난 예약은 취소할 수 없습니다.");
-        }
-
+        validateCancelableReservation(reservation);
         reservation.cancel();
     }
 
@@ -137,20 +130,57 @@ public class ClassReservationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
 
+        ClassReservation reservation = createReservationInternal(user, request, null);
+
+        return new CreateClassReservationResponse(
+                reservation.getReservationId(),
+                reservation.getReservationStatus().name()
+        );
+    }
+
+    @Transactional
+    public CreateClassReservationResponse changeReservation(
+            Long userId,
+            Long reservationId,
+            CreateClassReservationRequest request
+    ) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
+        ClassReservation originalReservation = classReservationRepository.findByReservationIdAndUser_Id(reservationId, userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 내역을 찾을 수 없습니다."));
+
+        validateCancelableReservation(originalReservation);
+
+        ClassReservation changedReservation = createReservationInternal(user, request, originalReservation);
+        originalReservation.cancel();
+
+        return new CreateClassReservationResponse(
+                changedReservation.getReservationId(),
+                changedReservation.getReservationStatus().name()
+        );
+    }
+
+    private ClassReservation createReservationInternal(
+            User user,
+            CreateClassReservationRequest request,
+            ClassReservation reservationToReplace
+    ) {
+        Long userId = user.getId();
+
         // 프론트가 슬롯 조회에서 받은 sessionId를 그대로 예약에 사용한다.
         ClassSession session = classSessionRepository.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약 가능한 슬롯을 찾을 수 없습니다."));
         Classes classes = session.getClasses();
-        if (classReservationRepository.existsByUser_IdAndReservationStatus(
-                userId,
-                ClassReservationStatus.PENDING
-        )) {
+        if (hasBlockingPendingReservation(userId, reservationToReplace)) {
             throw new InvalidInputException(ErrorCode.ACTIVE_CLASS_RESERVATION_ALREADY_EXISTS);
         }
 
         validateReservationRequest(user, request, classes, session);
 
         int reservedGuestCount = classReservationRepository.sumGuestCountBySessionId(session.getSessionId());
+        if (isReplacingSameSessionReservation(reservationToReplace, session)) {
+            reservedGuestCount -= reservationToReplace.getGuestCount() == null ? 1 : reservationToReplace.getGuestCount();
+        }
         int capacity = session.getCapacity() != null
                 ? session.getCapacity()
                 : (classes.getMaxCapacity() == null ? 0 : classes.getMaxCapacity());
@@ -164,7 +194,7 @@ public class ClassReservationService {
         }
 
         // 신청 단계에서는 바로 확정하지 않고 PENDING 으로 저장한다.
-        ClassReservation reservation = classReservationRepository.save(ClassReservation.builder()
+        return classReservationRepository.save(ClassReservation.builder()
                 .guestCount(request.guestCount())
                 .reservationTime(session.getStartDatetime())
                 .reservationStatus(ClassReservationStatus.PENDING)
@@ -174,11 +204,6 @@ public class ClassReservationService {
                 .classes(classes)
                 .classSession(session)
                 .build());
-
-        return new CreateClassReservationResponse(
-                reservation.getReservationId(),
-                reservation.getReservationStatus().name()
-        );
     }
 
     @Transactional
@@ -334,6 +359,42 @@ public class ClassReservationService {
         if (session.getSessionStatus() != null && !"OPEN".equalsIgnoreCase(session.getSessionStatus())) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT, "현재 예약할 수 없는 슬롯입니다.");
         }
+    }
+
+    private void validateCancelableReservation(ClassReservation reservation) {
+        if (reservation.getReservationStatus() == ClassReservationStatus.CANCELED) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "이미 취소된 예약입니다.");
+        }
+
+        if (reservation.getReservationTime() != null && reservation.getReservationTime().isBefore(LocalDateTime.now())) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "지난 예약은 취소할 수 없습니다.");
+        }
+    }
+
+    private boolean hasBlockingPendingReservation(Long userId, ClassReservation reservationToReplace) {
+        if (reservationToReplace == null) {
+            return classReservationRepository.existsByUser_IdAndReservationStatus(
+                    userId,
+                    ClassReservationStatus.PENDING
+            );
+        }
+
+        return classReservationRepository.existsByUser_IdAndReservationStatusAndReservationIdNot(
+                userId,
+                ClassReservationStatus.PENDING,
+                reservationToReplace.getReservationId()
+        );
+    }
+
+    private boolean isReplacingSameSessionReservation(
+            ClassReservation reservationToReplace,
+            ClassSession newSession
+    ) {
+        return reservationToReplace != null
+                && reservationToReplace.getClassSession() != null
+                && reservationToReplace.getClassSession().getSessionId() != null
+                && reservationToReplace.getClassSession().getSessionId().equals(newSession.getSessionId())
+                && reservationToReplace.getReservationStatus() != ClassReservationStatus.CANCELED;
     }
 
     private ClassReservationStatus parseReservationStatus(String status) {
