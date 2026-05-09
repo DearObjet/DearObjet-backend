@@ -1,6 +1,7 @@
 package app.dearobjet.backend.global.auth.service;
 
 import app.dearobjet.backend.domain.user.entity.User;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.auth.dto.RefreshResult;
 import app.dearobjet.backend.global.auth.jwt.JwtProvider;
@@ -31,6 +32,10 @@ public class TokenService {
         // 4. 사용자 조회
         User user = userRepository.findById(userId)
                 .orElseThrow();
+
+        if (user.getUserStatus() != UserStatus.ACTIVE) {
+            throw new IllegalStateException("INACTIVE_USER");
+        }
 
         // 5. 새 토큰 발급
         String newAccessToken =
