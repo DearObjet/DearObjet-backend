@@ -8,6 +8,8 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
@@ -23,5 +25,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Collection<Long> productsIds,
             Long artistId,
             ProductStatus status
+    );
+
+    @Query("""
+            select p
+            from Product p
+            where p.artist.id = :artistId
+              and p.status = :status
+              and p.stockQuantity > 0
+              and (
+                  :keyword = ''
+                  or lower(p.productName) like concat('%', :keyword, '%')
+              )
+            """)
+    Page<Product> findShipmentAvailableProducts(
+            @Param("artistId") Long artistId,
+            @Param("status") ProductStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable
     );
 }

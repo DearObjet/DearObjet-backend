@@ -108,6 +108,18 @@ public class Product extends BaseTimeEntity {
         this.stockQuantity = stockQuantity;
     }
 
+    public void decreaseStockQuantity(int quantity, Long expectedVersion) {
+        validateVersion(expectedVersion);
+        if (quantity < 1) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "차감 수량은 1 이상이어야 합니다.");
+        }
+        if (this.stockQuantity < quantity) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "출고 수량이 보유 재고보다 많습니다.");
+        }
+
+        this.stockQuantity -= quantity;
+    }
+
     public void updateMemo(String memo) {
         if (memo == null || memo.isBlank()) {
             this.memo = "";

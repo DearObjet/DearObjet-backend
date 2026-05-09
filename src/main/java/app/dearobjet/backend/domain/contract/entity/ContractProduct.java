@@ -76,6 +76,25 @@ public class ContractProduct extends BaseTimeEntity {
     @Column(name = "version")
     private Long version;
 
+    public static ContractProduct create(
+            ShopArtistContract shopArtistContract,
+            Product product,
+            BigDecimal sellingPrice,
+            BigDecimal marginAmount,
+            BigDecimal unitSettlementAmount
+    ) {
+        return ContractProduct.builder()
+                .shopArtistContract(shopArtistContract)
+                .product(product)
+                .sellingPrice(sellingPrice)
+                .marginAmount(marginAmount)
+                .unitSettlementAmount(unitSettlementAmount)
+                .listingStatus(ContractProductListingStatus.ACTIVE)
+                .stockQuantity(ZERO_STOCK_QUANTITY)
+                .soldQuantity(ZERO_STOCK_QUANTITY)
+                .build();
+    }
+
     /**
      * 정산 관련 금액은 재고 이력과 분리해서 관리한다.
      */
