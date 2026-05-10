@@ -33,6 +33,8 @@ public enum ErrorCode {
 
     // Class Reservation (CR0XX)
     CLASS_OWNER_CANNOT_RESERVE(HttpStatus.BAD_REQUEST, "CR001", "클래스를 개설한 본인은 예약할 수 없습니다"),
+    ACTIVE_CLASS_RESERVATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "CR002", "이미 대기 중인 원데이클래스 예약이 있습니다"),
+    CLASS_RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "CR003", "예약한 원데이클래스 내역이 없습니다"),
 
     // Auth (A0XX)
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A001", "유효하지 않은 토큰입니다"),

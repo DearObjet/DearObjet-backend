@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
+import app.dearobjet.backend.domain.classes.dto.MyClassReservationsResponse;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
 import jakarta.validation.Valid;
@@ -38,12 +39,39 @@ public class ClassReservationController {
         );
     }
 
+    @GetMapping("/class-reservations/me")
+    public ApiResponse<MyClassReservationsResponse> getMyReservations(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ApiResponse.of(classReservationService.getMyReservations(userDetails.getUserId()));
+    }
+
     @PostMapping("/class-reservations")
     public ApiResponse<CreateClassReservationResponse> createReservation(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateClassReservationRequest request
     ) {
         return ApiResponse.of(classReservationService.createReservation(userDetails.getUserId(), request));
+    }
+
+    @PostMapping("/class-reservations/{reservationId}/change")
+    public ApiResponse<CreateClassReservationResponse> changeReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId,
+            @Valid @RequestBody CreateClassReservationRequest request
+    ) {
+        return ApiResponse.of(
+                classReservationService.changeReservation(userDetails.getUserId(), reservationId, request)
+        );
+    }
+
+    @PostMapping("/class-reservations/{reservationId}/cancel")
+    public ApiResponse<Void> cancelReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId
+    ) {
+        classReservationService.cancelReservation(userDetails.getUserId(), reservationId);
+        return ApiResponse.of(null);
     }
 
     @GetMapping("/classes/{classId}/available-slots")

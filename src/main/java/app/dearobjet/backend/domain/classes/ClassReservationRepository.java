@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
 public interface ClassReservationRepository extends JpaRepository<ClassReservation, Long> {
 
@@ -20,6 +21,19 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
             ClassReservationStatus reservationStatus,
             Pageable pageable
     );
+
+    @EntityGraph(attributePaths = {"classes", "classes.shop"})
+    List<ClassReservation> findByUser_IdOrderByReservationTimeDesc(Long userId);
+
+    boolean existsByUser_IdAndReservationStatus(Long userId, ClassReservationStatus reservationStatus);
+
+    boolean existsByUser_IdAndReservationStatusAndReservationIdNot(
+            Long userId,
+            ClassReservationStatus reservationStatus,
+            Long reservationId
+    );
+
+    Optional<ClassReservation> findByReservationIdAndUser_Id(Long reservationId, Long userId);
 
     List<ClassReservation> findByClasses_ClassesIdAndReservationTimeBetween(
             Long classesId,
