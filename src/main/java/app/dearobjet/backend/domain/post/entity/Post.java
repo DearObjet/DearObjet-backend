@@ -41,4 +41,15 @@ public class Post extends BaseTimeEntity {
 
     @Column(name = "is_public")
     private Boolean isPublic;
+
+    public void update(String title, String content, String imageUrls, Boolean isPublic) {
+        this.title = title;
+        this.content = content;
+        if (imageUrls != null) {
+            this.imageUrls = imageUrls;
+        }
+        if (isPublic != null) {
+            this.isPublic = isPublic;
+        }
+    }
 }
