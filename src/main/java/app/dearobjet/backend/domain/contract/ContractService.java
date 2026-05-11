@@ -5,22 +5,27 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse
 import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractDocumentResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
+import app.dearobjet.backend.domain.contract.dto.SendContractRequest;
+import app.dearobjet.backend.domain.contract.dto.SubmitArtistContractRequest;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
+import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.contract.repository.ContractProductRepository;
@@ -32,6 +37,7 @@ import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
+import app.dearobjet.backend.global.exception.DuplicateEntityException;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.exception.InvalidInputException;
@@ -72,6 +78,110 @@ public class ContractService {
     private final ContractProductStockMovementRepository contractProductStockMovementRepository;
     private final ShopRepository shopRepository;
     private final ArtistRepository artistRepository;
+
+    @Transactional(readOnly = true)
+    public ContractTemplateResponse getContractTemplate(Long userId) {
+        return ContractTemplateResponse.from(getShopByUserId(userId));
+    }
+
+    @Transactional
+    public ContractDocumentResponse sendContractToArtist(Long userId, Long artistId, SendContractRequest request) {
+        Shop shop = getShopByUserId(userId);
+        Artist artist = artistRepository.findById(artistId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "계약서를 발송할 작가를 찾을 수 없습니다."
+                ));
+        validateContractTargetArtist(artist);
+
+        if (contractRepository.existsPendingOrCurrentApprovedContract(
+                shop.getShopId(),
+                artist.getId(),
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                LocalDate.now()
+        )) {
+            throw new DuplicateEntityException(
+                    ErrorCode.DUPLICATE_ENTITY,
+                    "이미 진행 중이거나 유효한 계약이 있는 작가입니다."
+            );
+        }
+
+        validateContractDates(request.getContractStartDate(), request.getContractEndDate());
+
+        ShopArtistContract contract = ShopArtistContract.createPendingDocument(shop, artist);
+        contract.fillShopContract(
+                request.getShopBusinessName(),
+                request.getShopOwnerName(),
+                request.getShopBusinessNumber(),
+                request.getShopAddress(),
+                request.getShopContact(),
+                request.getContractStartDate(),
+                request.getContractEndDate(),
+                request.getCommissionRate(),
+                request.getSettlementDay(),
+                request.getPaymentDay(),
+                request.getContractDate(),
+                request.getShopSignatureBusinessName(),
+                request.getShopSignatureOwnerName()
+        );
+
+        return ContractDocumentResponse.from(contractRepository.save(contract));
+    }
+
+    @Transactional
+    public ContractDocumentResponse submitArtistContract(
+            Long userId,
+            Long contractId,
+            SubmitArtistContractRequest request
+    ) {
+        ShopArtistContract contract = getArtistOwnedContract(userId, contractId);
+        if (contract.getContractStatus() != ContractStatus.PENDING
+                || contract.getContractDocumentStatus() != ContractDocumentStatus.SHOP_SENT) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "작가 작성이 가능한 계약서가 아닙니다."
+            );
+        }
+
+        contract.fillArtistContract(
+                request.getArtistName(),
+                normalizeOptional(request.getArtistBusinessNumber()),
+                request.getArtistAddress(),
+                request.getArtistContact(),
+                request.getArtistBankName(),
+                request.getArtistAccountHolder(),
+                request.getArtistAccountNumber(),
+                request.getArtistSignatureName()
+        );
+
+        return ContractDocumentResponse.from(contract);
+    }
+
+    @Transactional
+    public ContractDocumentResponse approveContract(Long userId, Long contractId) {
+        Shop shop = getShopByUserId(userId);
+        ShopArtistContract contract = contractRepository.findManagedArtistContractByIdAndShopId(
+                        contractId,
+                        shop.getShopId(),
+                        MANAGED_ARTIST_CONTRACT_STATUSES
+                )
+                .orElseThrow(() -> new EntityNotFoundException(
+                        ErrorCode.ENTITY_NOT_FOUND,
+                        "승인할 계약서 정보를 찾을 수 없습니다."
+                ));
+
+        if (contract.getContractStatus() != ContractStatus.PENDING
+                || contract.getContractDocumentStatus() != ContractDocumentStatus.ARTIST_SUBMITTED) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "작가 작성 완료 후에만 계약 승인할 수 있습니다."
+            );
+        }
+
+        contract.approveDocument();
+        return ContractDocumentResponse.from(contract);
+    }
 
     @Transactional(readOnly = true)
     public ContractApplicationCountResponse getPendingApplicationCount(Long userId) {
@@ -414,6 +524,33 @@ public class ContractService {
             return "";
         }
         return keyword.trim().toLowerCase();
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private void validateContractDates(LocalDate startDate, LocalDate endDate) {
+        if (endDate.isBefore(startDate)) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "계약 종료일은 계약 시작일보다 빠를 수 없습니다."
+            );
+        }
+    }
+
+    private void validateContractTargetArtist(Artist artist) {
+        if (artist.getUser() == null
+                || artist.getUser().getRole() != Role.ARTIST
+                || artist.getUser().getUserStatus() != UserStatus.ACTIVE) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "계약서를 발송할 수 있는 활성 작가가 아닙니다."
+            );
+        }
     }
 
     private ContractProductStockMovement applyMovement(

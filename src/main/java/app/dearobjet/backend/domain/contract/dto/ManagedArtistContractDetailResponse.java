@@ -27,6 +27,7 @@ public class ManagedArtistContractDetailResponse {
     private final CommissionType commissionType;
     private final BigDecimal commissionValue;
     private final String memo;
+    private final ContractDocumentResponse contractDocument;
 
     public static ManagedArtistContractDetailResponse from(ShopArtistContract contract) {
         return new ManagedArtistContractDetailResponse(
@@ -41,7 +42,8 @@ public class ManagedArtistContractDetailResponse {
                 contract.getContractRequestType(),
                 contract.getCommissionType(),
                 contract.getCommissionValue(),
-                contract.getMemo() == null ? "" : contract.getMemo()
+                contract.getMemo() == null ? "" : contract.getMemo(),
+                ContractDocumentResponse.from(contract)
         );
     }
 }

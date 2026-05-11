@@ -38,6 +38,7 @@ public class ManagedArtistContractItemResponse {
                 ContractStatusActionResponse.from(
                         row.getContractStatus(),
                         row.getContractRequestType(),
+                        row.getContractDocumentStatus(),
                         terminable
                 ),
                 true

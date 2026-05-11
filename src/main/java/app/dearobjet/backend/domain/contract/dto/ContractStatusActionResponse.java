@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.contract.dto;
 
+import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import lombok.AccessLevel;
@@ -16,10 +17,16 @@ public class ContractStatusActionResponse {
     public static ContractStatusActionResponse from(
             ContractStatus status,
             ContractRequestType requestType,
+            ContractDocumentStatus documentStatus,
             boolean terminable
     ) {
         if (status == ContractStatus.PENDING && requestType == ContractRequestType.RELEASE) {
             return new ContractStatusActionResponse("RELEASE_APPROVE", "해제 승인");
+        }
+        if (status == ContractStatus.PENDING
+                && requestType == ContractRequestType.NONE
+                && documentStatus == ContractDocumentStatus.SHOP_SENT) {
+            return new ContractStatusActionResponse("WAITING_ARTIST_SUBMISSION", "작가 작성 대기");
         }
         if (status == ContractStatus.APPROVED && terminable) {
             return new ContractStatusActionResponse("TERMINATE_CONTRACT", "계약해지");
