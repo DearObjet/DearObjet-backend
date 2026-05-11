@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
+import app.dearobjet.backend.domain.contract.dto.CompletedContractDocumentListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractDocumentResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
@@ -12,6 +13,8 @@ import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
+import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsRequest;
+import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
@@ -50,7 +53,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -78,6 +83,41 @@ public class ContractService {
     private final ContractProductStockMovementRepository contractProductStockMovementRepository;
     private final ShopRepository shopRepository;
     private final ArtistRepository artistRepository;
+
+    @Transactional(readOnly = true)
+    public CompletedContractDocumentListResponse getCompletedContractDocuments(Long userId) {
+        Shop shop = getShopByUserId(userId);
+
+        return CompletedContractDocumentListResponse.from(
+                contractRepository.findCompletedDocumentRowsByShopId(
+                        shop.getShopId(),
+                        ContractStatus.APPROVED,
+                        ContractDocumentStatus.APPROVED
+                )
+        );
+    }
+
+    @Transactional
+    public DeleteCompletedContractDocumentsResponse deleteCompletedContractDocuments(
+            Long userId,
+            DeleteCompletedContractDocumentsRequest request
+    ) {
+        Shop shop = getShopByUserId(userId);
+        List<Long> requestedIds = distinctIds(request.getContractIds());
+        List<ShopArtistContract> contracts = contractRepository.findAllByIdsAndShopId(
+                requestedIds,
+                shop.getShopId()
+        );
+        validateAllRequestedContractsFound(requestedIds, contracts);
+
+        LocalDateTime deletedAt = LocalDateTime.now();
+        contracts.forEach(contract -> {
+            validateCompletedDocument(contract);
+            contract.hideCompletedDocumentForShop(userId, deletedAt);
+        });
+
+        return DeleteCompletedContractDocumentsResponse.from(requestedIds);
+    }
 
     @Transactional(readOnly = true)
     public ContractTemplateResponse getContractTemplate(Long userId) {
@@ -549,6 +589,40 @@ public class ContractService {
             throw new InvalidInputException(
                     ErrorCode.INVALID_INPUT,
                     "계약서를 발송할 수 있는 활성 작가가 아닙니다."
+            );
+        }
+    }
+
+    private List<Long> distinctIds(List<Long> ids) {
+        return ids.stream()
+                .distinct()
+                .toList();
+    }
+
+    private void validateAllRequestedContractsFound(
+            List<Long> requestedIds,
+            List<ShopArtistContract> contracts
+    ) {
+        Set<Long> foundIds = new HashSet<>(
+                contracts.stream()
+                        .map(ShopArtistContract::getShopArtistContractsId)
+                        .toList()
+        );
+        boolean allFound = requestedIds.stream().allMatch(foundIds::contains);
+        if (!allFound) {
+            throw new EntityNotFoundException(
+                    ErrorCode.ENTITY_NOT_FOUND,
+                    "삭제할 계약서 중 소품샵 소유가 아니거나 존재하지 않는 계약서가 있습니다."
+            );
+        }
+    }
+
+    private void validateCompletedDocument(ShopArtistContract contract) {
+        if (contract.getContractStatus() != ContractStatus.APPROVED
+                || contract.getContractDocumentStatus() != ContractDocumentStatus.APPROVED) {
+            throw new InvalidInputException(
+                    ErrorCode.INVALID_INPUT,
+                    "완료된 계약서만 삭제할 수 있습니다."
             );
         }
     }

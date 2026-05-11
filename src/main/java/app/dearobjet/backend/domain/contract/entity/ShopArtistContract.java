@@ -139,6 +139,12 @@ public class ShopArtistContract extends BaseTimeEntity {
     @Column(name = "terminated_at")
     private LocalDateTime terminatedAt;
 
+    @Column(name = "shop_document_deleted_at")
+    private LocalDateTime shopDocumentDeletedAt;
+
+    @Column(name = "shop_document_deleted_by_user_id")
+    private Long shopDocumentDeletedByUserId;
+
     public static ShopArtistContract createPendingDocument(Shop shop, Artist artist) {
         return ShopArtistContract.builder()
                 .shop(shop)
@@ -207,6 +213,18 @@ public class ShopArtistContract extends BaseTimeEntity {
         this.contractStatus = ContractStatus.APPROVED;
         this.contractRequestType = ContractRequestType.NONE;
         this.contractDocumentStatus = ContractDocumentStatus.APPROVED;
+    }
+
+    public void hideCompletedDocumentForShop(Long deletedByUserId, LocalDateTime deletedAt) {
+        if (deletedByUserId == null) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "계약서 삭제 사용자 ID는 필수입니다.");
+        }
+        if (deletedAt == null) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "계약서 삭제 시각은 필수입니다.");
+        }
+
+        this.shopDocumentDeletedAt = deletedAt;
+        this.shopDocumentDeletedByUserId = deletedByUserId;
     }
 
     public void updateMemo(String memo) {
