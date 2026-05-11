@@ -7,12 +7,16 @@ import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractDocumentResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
+import app.dearobjet.backend.domain.contract.dto.SendContractRequest;
+import app.dearobjet.backend.domain.contract.dto.SubmitArtistContractRequest;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
@@ -23,6 +27,7 @@ import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductStockMovementType;
@@ -39,6 +44,7 @@ import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
+import app.dearobjet.backend.global.exception.DuplicateEntityException;
 import app.dearobjet.backend.global.exception.InvalidInputException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,6 +79,7 @@ class ContractServiceTest {
     private static final Long ARTIST_ID = 20L;
     private static final LocalDate CONTRACT_START_DATE = LocalDate.of(2026, 5, 1);
     private static final LocalDate CONTRACT_END_DATE = LocalDate.of(2026, 12, 31);
+    private static final LocalDate CONTRACT_DATE = LocalDate.of(2026, 4, 30);
     private static final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 4, 28, 16, 0);
     private static final String UPDATED_MEMO = "Postman에서 수정한 계약 작가 메모";
 
@@ -93,6 +100,130 @@ class ContractServiceTest {
 
     @Mock
     private ArtistRepository artistRepository;
+
+    @Test
+    @DisplayName("계약서 템플릿은 소품샵 사업자 정보로 기본값을 채운다")
+    void givenShopProfile_whenGetContractTemplate_thenReturnPrefilledShopFields() {
+        Shop shop = shopWithContractProfile(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+
+        ContractTemplateResponse response = contractService.getContractTemplate(USER_ID);
+
+        assertThat(response.getShopBusinessName()).isEqualTo("템플릿 소품샵");
+        assertThat(response.getShopOwnerName()).isEqualTo("대표자 A");
+        assertThat(response.getShopBusinessNumber()).isEqualTo("123-45-67890");
+        assertThat(response.getShopAddress()).isEqualTo("서울시 마포구");
+        assertThat(response.getShopContact()).isEqualTo("01011112222");
+        assertThat(response.getShopSignatureBusinessName()).isEqualTo("템플릿 소품샵");
+        assertThat(response.getShopSignatureOwnerName()).isEqualTo("대표자 A");
+        assertThat(response.getArtistName()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("소품샵이 계약서를 작성해 작가에게 발송한다")
+    void givenShopContractRequest_whenSendContractToArtist_thenCreatePendingContractDocument() {
+        Shop shop = shopWithId(SHOP_ID);
+        Artist artist = artistWithId(ARTIST_ID);
+        SendContractRequest request = sendContractRequest();
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(artistRepository.findById(ARTIST_ID)).willReturn(Optional.of(artist));
+        given(contractRepository.existsPendingOrCurrentApprovedContract(
+                SHOP_ID,
+                ARTIST_ID,
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                LocalDate.now()
+        )).willReturn(false);
+        given(contractRepository.save(any(ShopArtistContract.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        ContractDocumentResponse response = contractService.sendContractToArtist(USER_ID, ARTIST_ID, request);
+
+        assertThat(response.getContractStatus()).isEqualTo(ContractStatus.PENDING);
+        assertThat(response.getContractDocumentStatus()).isEqualTo(ContractDocumentStatus.SHOP_SENT);
+        assertThat(response.getShopBusinessName()).isEqualTo("Postman 테스트 소품샵");
+        assertThat(response.getCommissionRate()).isEqualTo(new BigDecimal("20.0000"));
+        assertThat(response.getSettlementDay()).isEqualTo(15);
+        assertThat(response.getPaymentDay()).isEqualTo(10);
+        assertThat(response.getArtistName()).isEmpty();
+        verify(contractRepository).save(any(ShopArtistContract.class));
+    }
+
+    @Test
+    @DisplayName("이미 진행 중인 계약이 있으면 계약서를 발송할 수 없다")
+    void givenExistingActiveContract_whenSendContractToArtist_thenThrowException() {
+        Shop shop = shopWithId(SHOP_ID);
+        Artist artist = artistWithId(ARTIST_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(artistRepository.findById(ARTIST_ID)).willReturn(Optional.of(artist));
+        given(contractRepository.existsPendingOrCurrentApprovedContract(
+                SHOP_ID,
+                ARTIST_ID,
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                LocalDate.now()
+        )).willReturn(true);
+
+        assertThatThrownBy(() -> contractService.sendContractToArtist(USER_ID, ARTIST_ID, sendContractRequest()))
+                .isInstanceOf(DuplicateEntityException.class)
+                .hasMessageContaining("이미 진행 중이거나 유효한 계약이 있는 작가입니다.");
+    }
+
+    @Test
+    @DisplayName("작가가 계약서 나머지 내용을 작성해 제출한다")
+    void givenShopSentContract_whenSubmitArtistContract_thenChangeToArtistSubmitted() {
+        ShopArtistContract contract = shopSentContract();
+        givenArtistOwnedContract(contract);
+
+        ContractDocumentResponse response =
+                contractService.submitArtistContract(USER_ID, CONTRACT_ID, submitArtistContractRequest());
+
+        assertThat(response.getContractDocumentStatus()).isEqualTo(ContractDocumentStatus.ARTIST_SUBMITTED);
+        assertThat(response.getArtistName()).isEqualTo("Postman 도자기 작가");
+        assertThat(response.getArtistBusinessNumber()).isEmpty();
+        assertThat(response.getArtistBankName()).isEqualTo("국민은행");
+        assertThat(response.getArtistAccountNumber()).isEqualTo("1234567890");
+    }
+
+    @Test
+    @DisplayName("작가 작성 완료 계약서만 소품샵이 승인할 수 있다")
+    void givenArtistSubmittedContract_whenApproveContract_thenChangeToApproved() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = artistSubmittedContract();
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.of(contract));
+
+        ContractDocumentResponse response = contractService.approveContract(USER_ID, CONTRACT_ID);
+
+        assertThat(response.getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+        assertThat(response.getContractDocumentStatus()).isEqualTo(ContractDocumentStatus.APPROVED);
+        assertThat(contract.getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("작가 작성 전 계약서는 승인할 수 없다")
+    void givenShopSentContract_whenApproveContract_thenThrowException() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = shopSentContract();
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findManagedArtistContractByIdAndShopId(
+                CONTRACT_ID,
+                SHOP_ID,
+                List.of(ContractStatus.PENDING, ContractStatus.APPROVED, ContractStatus.ENDED)
+        )).willReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.approveContract(USER_ID, CONTRACT_ID))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("작가 작성 완료 후에만 계약 승인할 수 있습니다.");
+    }
 
     @Test
     @DisplayName("재고관리 목록에서 계약 작가를 조회한다")
@@ -813,6 +944,8 @@ class ContractServiceTest {
     private Artist artistWithId(Long artistId) {
         User artistUser = User.builder()
                 .id(USER_ID)
+                .role(Role.ARTIST)
+                .userStatus(UserStatus.ACTIVE)
                 .build();
         BusinessProfile businessProfile = BusinessProfile.builder()
                 .businessName("Postman 도자기 작가")
@@ -836,6 +969,25 @@ class ContractServiceTest {
                 .build();
         BusinessProfile businessProfile = BusinessProfile.builder()
                 .businessName("Postman 테스트 소품샵")
+                .build();
+        return Shop.builder()
+                .shopId(shopId)
+                .user(user)
+                .businessProfile(businessProfile)
+                .build();
+    }
+
+    private Shop shopWithContractProfile(Long shopId) {
+        User user = User.builder()
+                .id(USER_ID)
+                .phoneNumber("01099998888")
+                .build();
+        BusinessProfile businessProfile = BusinessProfile.builder()
+                .businessName("템플릿 소품샵")
+                .ownerName("대표자 A")
+                .businessNumber("123-45-67890")
+                .businessAddress("서울시 마포구")
+                .businessPhoneNumber("01011112222")
                 .build();
         return Shop.builder()
                 .shopId(shopId)
@@ -910,12 +1062,84 @@ class ContractServiceTest {
                 .build();
     }
 
+    private ShopArtistContract shopSentContract() {
+        ShopArtistContract contract = contractWithArtistAndShop(
+                CONTRACT_ID,
+                ContractStatus.PENDING,
+                ContractRequestType.NONE,
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE
+        );
+        contract.fillShopContract(
+                "Postman 테스트 소품샵",
+                "Postman 대표",
+                "111-22-33333",
+                "서울시 성동구",
+                "01012345678",
+                CONTRACT_START_DATE,
+                CONTRACT_END_DATE,
+                new BigDecimal("20.0000"),
+                15,
+                10,
+                CONTRACT_DATE,
+                "Postman 테스트 소품샵",
+                "Postman 대표"
+        );
+        return contract;
+    }
+
+    private ShopArtistContract artistSubmittedContract() {
+        ShopArtistContract contract = shopSentContract();
+        contract.fillArtistContract(
+                "Postman 도자기 작가",
+                null,
+                "부산시 해운대구",
+                "01022223333",
+                "국민은행",
+                "Postman 작가",
+                "1234567890",
+                "Postman 도자기 작가"
+        );
+        return contract;
+    }
+
     private AdjustContractInventoryRequest inventoryRequest() {
         AdjustContractInventoryRequest request = new AdjustContractInventoryRequest();
         setField(request, "movementType", ContractProductStockMovementType.INBOUND);
         setField(request, "quantity", 3);
         setField(request, "occurredAt", OCCURRED_AT);
         setField(request, "memo", "Postman 추가 입고");
+        return request;
+    }
+
+    private SendContractRequest sendContractRequest() {
+        SendContractRequest request = new SendContractRequest();
+        setField(request, "shopBusinessName", "Postman 테스트 소품샵");
+        setField(request, "shopOwnerName", "Postman 대표");
+        setField(request, "shopBusinessNumber", "111-22-33333");
+        setField(request, "shopAddress", "서울시 성동구");
+        setField(request, "shopContact", "01012345678");
+        setField(request, "contractStartDate", CONTRACT_START_DATE);
+        setField(request, "contractEndDate", CONTRACT_END_DATE);
+        setField(request, "commissionRate", new BigDecimal("20.0000"));
+        setField(request, "settlementDay", 15);
+        setField(request, "paymentDay", 10);
+        setField(request, "contractDate", CONTRACT_DATE);
+        setField(request, "shopSignatureBusinessName", "Postman 테스트 소품샵");
+        setField(request, "shopSignatureOwnerName", "Postman 대표");
+        return request;
+    }
+
+    private SubmitArtistContractRequest submitArtistContractRequest() {
+        SubmitArtistContractRequest request = new SubmitArtistContractRequest();
+        setField(request, "artistName", "Postman 도자기 작가");
+        setField(request, "artistBusinessNumber", " ");
+        setField(request, "artistAddress", "부산시 해운대구");
+        setField(request, "artistContact", "01022223333");
+        setField(request, "artistBankName", "국민은행");
+        setField(request, "artistAccountHolder", "Postman 작가");
+        setField(request, "artistAccountNumber", "1234567890");
+        setField(request, "artistSignatureName", "Postman 도자기 작가");
         return request;
     }
 

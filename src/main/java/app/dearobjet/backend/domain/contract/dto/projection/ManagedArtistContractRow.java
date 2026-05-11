@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.contract.dto.projection;
 
+import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 
@@ -13,4 +14,8 @@ public interface ManagedArtistContractRow {
     LocalDate getContractEndDate();
     ContractStatus getContractStatus();
     ContractRequestType getContractRequestType();
+
+    default ContractDocumentStatus getContractDocumentStatus() {
+        return ContractDocumentStatus.NONE;
+    }
 }

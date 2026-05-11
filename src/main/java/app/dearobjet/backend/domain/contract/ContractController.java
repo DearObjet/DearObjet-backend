@@ -5,16 +5,20 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse
 import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractDocumentResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
+import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
+import app.dearobjet.backend.domain.contract.dto.SendContractRequest;
+import app.dearobjet.backend.domain.contract.dto.SubmitArtistContractRequest;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.global.api.ApiResponse;
 import app.dearobjet.backend.global.auth.security.CustomUserDetails;
@@ -36,6 +40,60 @@ import org.springframework.web.bind.annotation.RestController;
 public class ContractController {
 
     private final ContractService contractService;
+
+    @GetMapping("/template")
+    public ApiResponse<ContractTemplateResponse> getContractTemplate(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(contractService.getContractTemplate(resolveUserId(userDetails, userId)));
+    }
+
+    @PostMapping("/artists/{artistId}/send")
+    public ApiResponse<ContractDocumentResponse> sendContractToArtist(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long artistId,
+            @Valid @RequestBody SendContractRequest request
+    ) {
+        return ApiResponse.of(
+                contractService.sendContractToArtist(
+                        resolveUserId(userDetails, userId),
+                        artistId,
+                        request
+                )
+        );
+    }
+
+    @PatchMapping("/shops/{contractId}/artist-submission")
+    public ApiResponse<ContractDocumentResponse> submitArtistContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId,
+            @Valid @RequestBody SubmitArtistContractRequest request
+    ) {
+        return ApiResponse.of(
+                contractService.submitArtistContract(
+                        resolveUserId(userDetails, userId),
+                        contractId,
+                        request
+                )
+        );
+    }
+
+    @PatchMapping("/artists/{contractId}/approval")
+    public ApiResponse<ContractDocumentResponse> approveContract(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @PathVariable Long contractId
+    ) {
+        return ApiResponse.of(
+                contractService.approveContract(
+                        resolveUserId(userDetails, userId),
+                        contractId
+                )
+        );
+    }
 
     @GetMapping("/pending-count")
     public ApiResponse<ContractApplicationCountResponse> getPendingApplicationCount(

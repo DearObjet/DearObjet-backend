@@ -18,11 +18,36 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public interface ContractRepository extends JpaRepository<ShopArtistContract, Long> {
 
     long countByShopUserIdAndContractStatus(Long userId, ContractStatus contractStatus);
+
+    @Query("""
+            select count(c) > 0
+            from ShopArtistContract c
+            where c.shop.shopId = :shopId
+              and c.artist.id = :artistId
+              and (
+                  c.contractStatus = :pendingStatus
+                  or (
+                      c.contractStatus = :approvedStatus
+                      and (
+                          c.contractEndDate is null
+                          or c.contractEndDate >= :today
+                      )
+                  )
+              )
+            """)
+    boolean existsPendingOrCurrentApprovedContract(
+            @Param("shopId") Long shopId,
+            @Param("artistId") Long artistId,
+            @Param("pendingStatus") ContractStatus pendingStatus,
+            @Param("approvedStatus") ContractStatus approvedStatus,
+            @Param("today") LocalDate today
+    );
 
     @Query("""
             select coalesce(nullif(trim(bp.businessName), ''), nullif(trim(u.name), ''), 'UNKNOWN')
@@ -194,7 +219,8 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
                    c.contractStartDate as contractStartDate,
                    c.contractEndDate as contractEndDate,
                    c.contractStatus as contractStatus,
-                   c.contractRequestType as contractRequestType
+                   c.contractRequestType as contractRequestType,
+                   c.contractDocumentStatus as contractDocumentStatus
             from ShopArtistContract c
             join c.artist a
             join a.businessProfile bp

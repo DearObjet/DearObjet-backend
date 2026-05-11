@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.contract.entity;
 
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.contract.enums.CommissionType;
+import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractRequestType;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.shop.entity.Shop;
@@ -59,6 +60,65 @@ public class ShopArtistContract extends BaseTimeEntity {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
+    @Column(name = "contract_document_status", nullable = false, length = 20)
+    private ContractDocumentStatus contractDocumentStatus = ContractDocumentStatus.NONE;
+
+    @Column(name = "shop_contract_business_name", length = 100)
+    private String shopContractBusinessName;
+
+    @Column(name = "shop_contract_owner_name", length = 50)
+    private String shopContractOwnerName;
+
+    @Column(name = "shop_contract_business_number", length = 30)
+    private String shopContractBusinessNumber;
+
+    @Column(name = "shop_contract_address", length = 500)
+    private String shopContractAddress;
+
+    @Column(name = "shop_contract_contact", length = 30)
+    private String shopContractContact;
+
+    @Column(name = "settlement_day")
+    private Integer settlementDay;
+
+    @Column(name = "payment_day")
+    private Integer paymentDay;
+
+    @Column(name = "contract_date")
+    private LocalDate contractDate;
+
+    @Column(name = "shop_signature_business_name", length = 100)
+    private String shopSignatureBusinessName;
+
+    @Column(name = "shop_signature_owner_name", length = 50)
+    private String shopSignatureOwnerName;
+
+    @Column(name = "artist_contract_name", length = 100)
+    private String artistContractName;
+
+    @Column(name = "artist_contract_business_number", length = 30)
+    private String artistContractBusinessNumber;
+
+    @Column(name = "artist_contract_address", length = 500)
+    private String artistContractAddress;
+
+    @Column(name = "artist_contract_contact", length = 30)
+    private String artistContractContact;
+
+    @Column(name = "artist_bank_name", length = 50)
+    private String artistBankName;
+
+    @Column(name = "artist_account_holder", length = 50)
+    private String artistAccountHolder;
+
+    @Column(name = "artist_account_number", length = 50)
+    private String artistAccountNumber;
+
+    @Column(name = "artist_signature_name", length = 100)
+    private String artistSignatureName;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(name = "contract_request_type", nullable = false, length = 20)
     private ContractRequestType contractRequestType = ContractRequestType.NONE;
 
@@ -78,6 +138,76 @@ public class ShopArtistContract extends BaseTimeEntity {
 
     @Column(name = "terminated_at")
     private LocalDateTime terminatedAt;
+
+    public static ShopArtistContract createPendingDocument(Shop shop, Artist artist) {
+        return ShopArtistContract.builder()
+                .shop(shop)
+                .artist(artist)
+                .contractStatus(ContractStatus.PENDING)
+                .contractRequestType(ContractRequestType.NONE)
+                .contractDocumentStatus(ContractDocumentStatus.SHOP_SENT)
+                .commissionType(CommissionType.RATE)
+                .build();
+    }
+
+    public void fillShopContract(
+            String businessName,
+            String ownerName,
+            String businessNumber,
+            String address,
+            String contact,
+            LocalDate contractStartDate,
+            LocalDate contractEndDate,
+            BigDecimal commissionRate,
+            Integer settlementDay,
+            Integer paymentDay,
+            LocalDate contractDate,
+            String signatureBusinessName,
+            String signatureOwnerName
+    ) {
+        this.shopContractBusinessName = businessName;
+        this.shopContractOwnerName = ownerName;
+        this.shopContractBusinessNumber = businessNumber;
+        this.shopContractAddress = address;
+        this.shopContractContact = contact;
+        this.contractStartDate = contractStartDate;
+        this.contractEndDate = contractEndDate;
+        this.commissionType = CommissionType.RATE;
+        this.commissionValue = commissionRate;
+        this.settlementDay = settlementDay;
+        this.paymentDay = paymentDay;
+        this.contractDate = contractDate;
+        this.shopSignatureBusinessName = signatureBusinessName;
+        this.shopSignatureOwnerName = signatureOwnerName;
+        this.contractDocumentStatus = ContractDocumentStatus.SHOP_SENT;
+    }
+
+    public void fillArtistContract(
+            String artistName,
+            String businessNumber,
+            String address,
+            String contact,
+            String bankName,
+            String accountHolder,
+            String accountNumber,
+            String signatureName
+    ) {
+        this.artistContractName = artistName;
+        this.artistContractBusinessNumber = businessNumber;
+        this.artistContractAddress = address;
+        this.artistContractContact = contact;
+        this.artistBankName = bankName;
+        this.artistAccountHolder = accountHolder;
+        this.artistAccountNumber = accountNumber;
+        this.artistSignatureName = signatureName;
+        this.contractDocumentStatus = ContractDocumentStatus.ARTIST_SUBMITTED;
+    }
+
+    public void approveDocument() {
+        this.contractStatus = ContractStatus.APPROVED;
+        this.contractRequestType = ContractRequestType.NONE;
+        this.contractDocumentStatus = ContractDocumentStatus.APPROVED;
+    }
 
     public void updateMemo(String memo) {
         this.memo = memo == null ? "" : memo;
