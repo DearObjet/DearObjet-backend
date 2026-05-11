@@ -4,12 +4,15 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
+import app.dearobjet.backend.domain.contract.dto.CompletedContractDocumentListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractDocumentResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
+import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsRequest;
+import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
@@ -21,6 +24,7 @@ import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.contract.dto.projection.CompletedContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
@@ -118,6 +122,82 @@ class ContractServiceTest {
         assertThat(response.getShopSignatureBusinessName()).isEqualTo("템플릿 소품샵");
         assertThat(response.getShopSignatureOwnerName()).isEqualTo("대표자 A");
         assertThat(response.getArtistName()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("소품샵 완료 계약서 목록을 조회한다")
+    void givenCompletedDocuments_whenGetCompletedContractDocuments_thenReturnDocumentRows() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findCompletedDocumentRowsByShopId(
+                SHOP_ID,
+                ContractStatus.APPROVED,
+                ContractDocumentStatus.APPROVED
+        )).willReturn(List.of(completedContractDocumentRow(CONTRACT_ID)));
+
+        CompletedContractDocumentListResponse response =
+                contractService.getCompletedContractDocuments(USER_ID);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getContractId()).isEqualTo(CONTRACT_ID);
+        assertThat(response.getItems().get(0).getTitle()).isEqualTo("입점 계약서");
+        assertThat(response.getItems().get(0).getContractDate()).isEqualTo(CONTRACT_DATE);
+        assertThat(response.getItems().get(0).getArtistId()).isEqualTo(ARTIST_ID);
+        assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 도자기 작가");
+    }
+
+    @Test
+    @DisplayName("완료 계약서를 소품샵 계약서 관리 목록에서 숨김 처리한다")
+    void givenCompletedDocuments_whenDeleteCompletedContractDocuments_thenHideDocumentsForShop() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = approvedDocumentContract();
+        DeleteCompletedContractDocumentsRequest request = deleteCompletedDocumentsRequest(CONTRACT_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findAllByIdsAndShopId(List.of(CONTRACT_ID), SHOP_ID))
+                .willReturn(List.of(contract));
+
+        DeleteCompletedContractDocumentsResponse response =
+                contractService.deleteCompletedContractDocuments(USER_ID, request);
+
+        assertThat(response.getDeletedCount()).isEqualTo(1);
+        assertThat(response.getDeletedContractIds()).containsExactly(CONTRACT_ID);
+        assertThat(contract.getShopDocumentDeletedAt()).isNotNull();
+        assertThat(contract.getShopDocumentDeletedByUserId()).isEqualTo(USER_ID);
+        assertThat(contract.getContractStatus()).isEqualTo(ContractStatus.APPROVED);
+        assertThat(contract.getContractDocumentStatus()).isEqualTo(ContractDocumentStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("소품샵 소유가 아닌 계약서가 포함되면 삭제할 수 없다")
+    void givenNotOwnedDocument_whenDeleteCompletedContractDocuments_thenThrowException() {
+        Shop shop = shopWithId(SHOP_ID);
+        DeleteCompletedContractDocumentsRequest request = deleteCompletedDocumentsRequest(CONTRACT_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findAllByIdsAndShopId(List.of(CONTRACT_ID), SHOP_ID))
+                .willReturn(List.of());
+
+        assertThatThrownBy(() -> contractService.deleteCompletedContractDocuments(USER_ID, request))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("삭제할 계약서 중 소품샵 소유가 아니거나 존재하지 않는 계약서가 있습니다.");
+    }
+
+    @Test
+    @DisplayName("미완료 계약서는 삭제할 수 없다")
+    void givenIncompleteDocument_whenDeleteCompletedContractDocuments_thenThrowException() {
+        Shop shop = shopWithId(SHOP_ID);
+        ShopArtistContract contract = shopSentContract();
+        DeleteCompletedContractDocumentsRequest request = deleteCompletedDocumentsRequest(CONTRACT_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findAllByIdsAndShopId(List.of(CONTRACT_ID), SHOP_ID))
+                .willReturn(List.of(contract));
+
+        assertThatThrownBy(() -> contractService.deleteCompletedContractDocuments(USER_ID, request))
+                .isInstanceOf(InvalidInputException.class)
+                .hasMessageContaining("완료된 계약서만 삭제할 수 있습니다.");
     }
 
     @Test
@@ -783,6 +863,50 @@ class ContractServiceTest {
         };
     }
 
+    private CompletedContractDocumentRow completedContractDocumentRow(Long contractId) {
+        return new CompletedContractDocumentRow() {
+            @Override
+            public Long getContractId() {
+                return contractId;
+            }
+
+            @Override
+            public Long getArtistId() {
+                return ARTIST_ID;
+            }
+
+            @Override
+            public String getArtistName() {
+                return "Postman 도자기 작가";
+            }
+
+            @Override
+            public String getArtistBusinessNumber() {
+                return "222-33-44444";
+            }
+
+            @Override
+            public String getArtistContact() {
+                return "01022223333";
+            }
+
+            @Override
+            public LocalDate getContractDate() {
+                return CONTRACT_DATE;
+            }
+
+            @Override
+            public LocalDate getContractStartDate() {
+                return CONTRACT_START_DATE;
+            }
+
+            @Override
+            public LocalDate getContractEndDate() {
+                return CONTRACT_END_DATE;
+            }
+        };
+    }
+
     private ArtistAccountSearchRow artistAccountSearchRow(Long artistId, Long userId, String artistName) {
         return new ArtistAccountSearchRow() {
             @Override
@@ -1108,6 +1232,12 @@ class ContractServiceTest {
         return contract;
     }
 
+    private ShopArtistContract approvedDocumentContract() {
+        ShopArtistContract contract = artistSubmittedContract();
+        contract.approveDocument();
+        return contract;
+    }
+
     private AdjustContractInventoryRequest inventoryRequest() {
         AdjustContractInventoryRequest request = new AdjustContractInventoryRequest();
         setField(request, "movementType", ContractProductStockMovementType.INBOUND);
@@ -1145,6 +1275,12 @@ class ContractServiceTest {
         setField(request, "artistAccountHolder", "Postman 작가");
         setField(request, "artistAccountNumber", "1234567890");
         setField(request, "artistSignatureName", "Postman 도자기 작가");
+        return request;
+    }
+
+    private DeleteCompletedContractDocumentsRequest deleteCompletedDocumentsRequest(Long... contractIds) {
+        DeleteCompletedContractDocumentsRequest request = new DeleteCompletedContractDocumentsRequest();
+        setField(request, "contractIds", List.of(contractIds));
         return request;
     }
 

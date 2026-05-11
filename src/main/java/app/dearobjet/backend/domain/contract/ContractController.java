@@ -4,6 +4,7 @@ import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryRequest;
 import app.dearobjet.backend.domain.contract.dto.AdjustContractInventoryResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistAccountSearchResponse;
 import app.dearobjet.backend.domain.contract.dto.ArtistSuggestionListResponse;
+import app.dearobjet.backend.domain.contract.dto.CompletedContractDocumentListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractApplicationCountResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractDocumentResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractInboundConfirmResponse;
@@ -12,6 +13,8 @@ import app.dearobjet.backend.domain.contract.dto.ContractInventoryListResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractMemoResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
+import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsRequest;
+import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
@@ -25,6 +28,7 @@ import app.dearobjet.backend.global.auth.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,6 +44,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class ContractController {
 
     private final ContractService contractService;
+
+    @GetMapping("/documents/completed")
+    public ApiResponse<CompletedContractDocumentListResponse> getCompletedContractDocuments(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(
+                contractService.getCompletedContractDocuments(resolveUserId(userDetails, userId))
+        );
+    }
+
+    @DeleteMapping("/documents/completed")
+    public ApiResponse<DeleteCompletedContractDocumentsResponse> deleteCompletedContractDocuments(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId,
+            @Valid @RequestBody DeleteCompletedContractDocumentsRequest request
+    ) {
+        return ApiResponse.of(
+                contractService.deleteCompletedContractDocuments(
+                        resolveUserId(userDetails, userId),
+                        request
+                )
+        );
+    }
 
     @GetMapping("/template")
     public ApiResponse<ContractTemplateResponse> getContractTemplate(
