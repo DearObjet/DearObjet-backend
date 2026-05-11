@@ -878,6 +878,11 @@ class ContractServiceTest {
             public ContractRequestType getContractRequestType() {
                 return requestType;
             }
+
+            @Override
+            public ContractDocumentStatus getContractDocumentStatus() {
+                return ContractDocumentStatus.ARTIST_SUBMITTED;
+            }
         };
     }
 
