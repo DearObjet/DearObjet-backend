@@ -14,8 +14,5 @@ public interface ManagedArtistContractRow {
     LocalDate getContractEndDate();
     ContractStatus getContractStatus();
     ContractRequestType getContractRequestType();
-
-    default ContractDocumentStatus getContractDocumentStatus() {
-        return ContractDocumentStatus.NONE;
-    }
+    ContractDocumentStatus getContractDocumentStatus();
 }
