@@ -11,7 +11,8 @@ public record PostListResponse(
     public record Item(
             Long postId,
             String thumbnailUrl,
-            String title,
+            String authorName,
+            String authorProfileUrl,
             LocalDateTime createdAt
     ) {
     }
