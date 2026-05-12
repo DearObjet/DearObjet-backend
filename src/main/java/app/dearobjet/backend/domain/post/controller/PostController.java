@@ -39,6 +39,13 @@ public class PostController {
         return ApiResponse.of(postService.createPost(userDetails.getUserId(), request, images));
     }
 
+    @GetMapping("/all")
+    public ApiResponse<PostListResponse> getAllPosts(
+            @RequestParam(defaultValue = "1") int page
+    ) {
+        return ApiResponse.of(postService.getAllPosts(page));
+    }
+
     @GetMapping
     public ApiResponse<PostListResponse> getPosts(
             @RequestParam Long userId,

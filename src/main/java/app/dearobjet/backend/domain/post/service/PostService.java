@@ -7,7 +7,6 @@ import app.dearobjet.backend.domain.post.dto.UpdatePostRequest;
 import app.dearobjet.backend.domain.post.entity.Post;
 import app.dearobjet.backend.domain.post.repository.PostRepository;
 import app.dearobjet.backend.domain.user.entity.User;
-import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.BusinessException;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
@@ -44,20 +43,12 @@ public class PostService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        if (user.getRole() != Role.ARTIST) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
-
         List<String> urls = uploadImages(images, userId);
 
         Post post = postRepository.save(Post.builder()
                 .user(user)
-                .title(request.title())
                 .content(request.content())
                 .imageUrls(toJson(urls))
-                .viewCount(0)
-                .likeCount(0)
-                .commentCount(0)
                 .isPublic(request.isPublic() != null ? request.isPublic() : true)
                 .build());
 
@@ -74,20 +65,20 @@ public class PostService {
         );
 
         Page<Post> postPage = postRepository.findByUser_Id(targetUserId, pageable);
+        return toListResponse(postPage, page);
+    }
 
-        List<PostListResponse.Item> items = new ArrayList<>();
-        for (Post post : postPage.getContent()) {
-            List<String> urls = fromJson(post.getImageUrls());
-            String thumbnail = urls.isEmpty() ? null : urls.get(0);
-            items.add(new PostListResponse.Item(
-                    post.getPostId(),
-                    thumbnail,
-                    post.getTitle(),
-                    post.getCreatedAt()
-            ));
-        }
+    @Transactional(readOnly = true)
+    public PostListResponse getAllPosts(int page) {
+        Pageable pageable = PageRequest.of(
+                Math.max(page - 1, 0),
+                POST_PAGE_SIZE,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+                        .and(Sort.by(Sort.Direction.DESC, "postId"))
+        );
 
-        return new PostListResponse(items, page, postPage.getTotalPages());
+        Page<Post> postPage = postRepository.findAll(pageable);
+        return toListResponse(postPage, page);
     }
 
     @Transactional(readOnly = true)
@@ -116,7 +107,7 @@ public class PostService {
             urls = fromJson(post.getImageUrls());
         }
 
-        post.update(request.title(), request.content(), imageUrlsJson, request.isPublic());
+        post.update(request.content(), imageUrlsJson, request.isPublic());
         return toResponse(post, urls);
     }
 
@@ -130,6 +121,22 @@ public class PostService {
         }
 
         postRepository.delete(post);
+    }
+
+    private PostListResponse toListResponse(Page<Post> postPage, int page) {
+        List<PostListResponse.Item> items = new ArrayList<>();
+        for (Post post : postPage.getContent()) {
+            List<String> urls = fromJson(post.getImageUrls());
+            String thumbnail = urls.isEmpty() ? null : urls.get(0);
+            items.add(new PostListResponse.Item(
+                    post.getPostId(),
+                    thumbnail,
+                    post.getUser().getName(),
+                    post.getUser().getProfileUrl(),
+                    post.getCreatedAt()
+            ));
+        }
+        return new PostListResponse(items, page, postPage.getTotalPages());
     }
 
     private List<String> uploadImages(List<MultipartFile> images, Long userId) {
@@ -169,11 +176,9 @@ public class PostService {
                 post.getPostId(),
                 post.getUser().getId(),
                 post.getUser().getName(),
-                post.getTitle(),
+                post.getUser().getProfileUrl(),
                 post.getContent(),
                 urls,
-                post.getViewCount(),
-                post.getLikeCount(),
                 post.getIsPublic(),
                 post.getCreatedAt()
         );

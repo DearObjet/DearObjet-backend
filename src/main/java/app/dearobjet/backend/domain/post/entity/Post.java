@@ -22,28 +22,16 @@ public class Post extends BaseTimeEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
-    private String title;
-
     @Column(columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "image_urls", columnDefinition = "JSON")
     private String imageUrls;
 
-    @Column(name = "view_count")
-    private Integer viewCount;
-
-    @Column(name = "like_count")
-    private Integer likeCount;
-
-    @Column(name = "comment_count")
-    private Integer commentCount;
-
     @Column(name = "is_public")
     private Boolean isPublic;
 
-    public void update(String title, String content, String imageUrls, Boolean isPublic) {
-        this.title = title;
+    public void update(String content, String imageUrls, Boolean isPublic) {
         this.content = content;
         if (imageUrls != null) {
             this.imageUrls = imageUrls;
