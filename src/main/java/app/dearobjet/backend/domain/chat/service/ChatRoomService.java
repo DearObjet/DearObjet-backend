@@ -47,6 +47,10 @@ public class ChatRoomService {
      */
     @Transactional
     public ChatRoomResponse createOrGetChatRoom(Long currentUserId, CreateChatRoomRequest request) {
+        if (request.getType() == ChatRoomType.ONE_TO_ONE && request.getParticipantIds().contains(currentUserId)) {
+            throw new InvalidInputException(ErrorCode.CANNOT_CHAT_WITH_SELF);
+        }
+
         // 참여자 목록에 현재 사용자 추가
         List<Long> allParticipantIds = new java.util.ArrayList<>(request.getParticipantIds());
         if (!allParticipantIds.contains(currentUserId)) {

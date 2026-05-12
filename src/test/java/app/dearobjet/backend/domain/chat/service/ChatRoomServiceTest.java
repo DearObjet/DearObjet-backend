@@ -12,7 +12,8 @@ import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
-import app.dearobjet.backend.global.exception.EntityNotFoundException;
+import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.exception.InvalidInputException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -150,16 +151,13 @@ class ChatRoomServiceTest {
         @DisplayName("자기 자신과 채팅방 생성 시 예외")
         void givenSameUser_whenCreate_thenThrowException() {
             // given
-            // participantIds=[CURRENT_USER_ID], currentUserId=CURRENT_USER_ID
-            // → allParticipantIds=[CURRENT_USER_ID] (1명) → 파트너 조회 실패
             CreateChatRoomRequest request = CreateChatRoomRequest.oneToOne(CURRENT_USER_ID);
-
-            given(userRepository.findAllById(anyList()))
-                    .willReturn(List.of(currentUser));
 
             // when & then
             assertThatThrownBy(() -> chatRoomService.createOrGetChatRoom(CURRENT_USER_ID, request))
-                    .isInstanceOf(EntityNotFoundException.class);
+                    .isInstanceOf(InvalidInputException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.CANNOT_CHAT_WITH_SELF);
         }
     }
 }
