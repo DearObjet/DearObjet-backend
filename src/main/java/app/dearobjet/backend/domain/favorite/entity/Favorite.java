@@ -10,7 +10,15 @@ import java.time.LocalDateTime;
 
 
 @Entity
-@Table(name = "favorites")
+@Table(
+        name = "favorites",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_favorites_user_target",
+                        columnNames = {"user_id", "target_type", "target_id"}
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -19,6 +27,7 @@ public class Favorite extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "favorite_id")
     private Long favoriteId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,5 +41,10 @@ public class Favorite extends BaseTimeEntity {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
+    @Column(name = "last_modified_at")
     private LocalDateTime lastModifiedAt;
+
+    public void touch() {
+        this.lastModifiedAt = LocalDateTime.now();
+    }
 }
