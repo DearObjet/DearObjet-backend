@@ -8,6 +8,7 @@ import app.dearobjet.backend.domain.chat.repository.ChatParticipantRepository;
 import app.dearobjet.backend.domain.chat.repository.ChatRoomRepository;
 import app.dearobjet.backend.domain.chat.service.redis.ChatMessagePublisher;
 import app.dearobjet.backend.domain.chat.service.redis.MessageCacheRedisService;
+import app.dearobjet.backend.domain.chat.service.redis.PresenceRedisService;
 import app.dearobjet.backend.domain.chat.service.redis.UnreadCountRedisService;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
@@ -59,6 +60,8 @@ class ChatMessageServiceTest {
     private UnreadCountRedisService unreadCountRedisService;
     @Mock
     private MessageCacheRedisService messageCacheRedisService;
+    @Mock
+    private PresenceRedisService presenceRedisService;
 
     private User sender;
     private User receiver;
@@ -136,6 +139,8 @@ class ChatMessageServiceTest {
                     .build();
             given(chatMessageRepository.save(any(ChatMessage.class)))
                     .willReturn(savedMessage);
+            given(presenceRedisService.getOnlineUsersInRoom(ROOM_ID))
+                    .willReturn(Collections.emptySet());
 
             // when
             ChatMessageResponse result = chatMessageService.sendMessage(SENDER_ID, ROOM_ID, request);
@@ -144,7 +149,7 @@ class ChatMessageServiceTest {
             assertThat(result.getContent()).isEqualTo("안녕하세요");
             assertThat(result.getSenderId()).isEqualTo(SENDER_ID);
             verify(messagePublisher).publishToRoom(any());
-            verify(unreadCountRedisService).incrementForParticipants(eq(ROOM_ID), anySet(), eq(SENDER_ID));
+            verify(unreadCountRedisService).incrementUnreadCount(RECEIVER_ID, ROOM_ID);
             verify(messageCacheRedisService).addRecentMessage(any(), eq(SENDER_ID));
         }
 
