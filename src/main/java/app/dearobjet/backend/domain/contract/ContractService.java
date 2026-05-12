@@ -15,6 +15,7 @@ import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsRequest;
 import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsResponse;
+import app.dearobjet.backend.domain.contract.dto.InProgressContractDocumentListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
@@ -78,6 +79,11 @@ public class ContractService {
             ContractStatus.ENDED
     );
 
+    private static final List<ContractDocumentStatus> IN_PROGRESS_DOCUMENT_STATUSES = List.of(
+            ContractDocumentStatus.SHOP_SENT,
+            ContractDocumentStatus.ARTIST_SUBMITTED
+    );
+
     private final ContractRepository contractRepository;
     private final ContractProductRepository contractProductRepository;
     private final ContractProductStockMovementRepository contractProductStockMovementRepository;
@@ -95,6 +101,28 @@ public class ContractService {
                         ContractDocumentStatus.APPROVED
                 )
         );
+    }
+
+    @Transactional(readOnly = true)
+    public InProgressContractDocumentListResponse getInProgressContractDocuments(Long userId) {
+        return shopRepository.findByUser_Id(userId)
+                .map(shop -> InProgressContractDocumentListResponse.forShop(
+                        contractRepository.findInProgressDocumentRowsByShopId(
+                                shop.getShopId(),
+                                ContractStatus.PENDING,
+                                IN_PROGRESS_DOCUMENT_STATUSES
+                        )
+                ))
+                .orElseGet(() -> {
+                    Artist artist = getArtistByUserId(userId);
+                    return InProgressContractDocumentListResponse.forArtist(
+                            contractRepository.findInProgressDocumentRowsByArtistId(
+                                    artist.getId(),
+                                    ContractStatus.PENDING,
+                                    IN_PROGRESS_DOCUMENT_STATUSES
+                            )
+                    );
+                });
     }
 
     @Transactional

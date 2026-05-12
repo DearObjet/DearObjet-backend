@@ -15,6 +15,7 @@ import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsRequest;
 import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsResponse;
+import app.dearobjet.backend.domain.contract.dto.InProgressContractDocumentListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
@@ -52,6 +53,16 @@ public class ContractController {
     ) {
         return ApiResponse.of(
                 contractService.getCompletedContractDocuments(resolveUserId(userDetails, userId))
+        );
+    }
+
+    @GetMapping("/documents/in-progress")
+    public ApiResponse<InProgressContractDocumentListResponse> getInProgressContractDocuments(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(
+                contractService.getInProgressContractDocuments(resolveUserId(userDetails, userId))
         );
     }
 
