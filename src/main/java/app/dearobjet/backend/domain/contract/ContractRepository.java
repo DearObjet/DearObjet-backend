@@ -5,6 +5,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRow;
 import app.dearobjet.backend.domain.contract.dto.projection.CompletedContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
+import app.dearobjet.backend.domain.contract.dto.projection.InProgressContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
@@ -51,6 +52,50 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             @Param("shopId") Long shopId,
             @Param("contractStatus") ContractStatus contractStatus,
             @Param("documentStatus") ContractDocumentStatus documentStatus
+    );
+
+    @Query("""
+            select c.shopArtistContractsId as contractId,
+                   a.id as counterpartyId,
+                   coalesce(nullif(c.artistContractName, ''), bp.businessName) as counterpartyName,
+                   c.contractDate as contractDate,
+                   c.contractStartDate as contractStartDate,
+                   c.contractEndDate as contractEndDate,
+                   c.contractDocumentStatus as contractDocumentStatus
+            from ShopArtistContract c
+            join c.artist a
+            join a.businessProfile bp
+            where c.shop.shopId = :shopId
+              and c.contractStatus = :contractStatus
+              and c.contractDocumentStatus in :documentStatuses
+            order by c.shopArtistContractsId desc
+            """)
+    List<InProgressContractDocumentRow> findInProgressDocumentRowsByShopId(
+            @Param("shopId") Long shopId,
+            @Param("contractStatus") ContractStatus contractStatus,
+            @Param("documentStatuses") List<ContractDocumentStatus> documentStatuses
+    );
+
+    @Query("""
+            select c.shopArtistContractsId as contractId,
+                   s.shopId as counterpartyId,
+                   bp.businessName as counterpartyName,
+                   c.contractDate as contractDate,
+                   c.contractStartDate as contractStartDate,
+                   c.contractEndDate as contractEndDate,
+                   c.contractDocumentStatus as contractDocumentStatus
+            from ShopArtistContract c
+            join c.shop s
+            join s.businessProfile bp
+            where c.artist.id = :artistId
+              and c.contractStatus = :contractStatus
+              and c.contractDocumentStatus in :documentStatuses
+            order by c.shopArtistContractsId desc
+            """)
+    List<InProgressContractDocumentRow> findInProgressDocumentRowsByArtistId(
+            @Param("artistId") Long artistId,
+            @Param("contractStatus") ContractStatus contractStatus,
+            @Param("documentStatuses") List<ContractDocumentStatus> documentStatuses
     );
 
     @Query("""

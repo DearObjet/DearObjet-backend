@@ -13,6 +13,7 @@ import app.dearobjet.backend.domain.contract.dto.ContractTemplateResponse;
 import app.dearobjet.backend.domain.contract.dto.ContractTerminationResponse;
 import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsRequest;
 import app.dearobjet.backend.domain.contract.dto.DeleteCompletedContractDocumentsResponse;
+import app.dearobjet.backend.domain.contract.dto.InProgressContractDocumentListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedArtistContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResultResponse;
@@ -25,6 +26,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistAccountSearchRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
 import app.dearobjet.backend.domain.contract.dto.projection.CompletedContractDocumentRow;
+import app.dearobjet.backend.domain.contract.dto.projection.InProgressContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
@@ -145,6 +147,68 @@ class ContractServiceTest {
         assertThat(response.getItems().get(0).getContractDate()).isEqualTo(CONTRACT_DATE);
         assertThat(response.getItems().get(0).getArtistId()).isEqualTo(ARTIST_ID);
         assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 도자기 작가");
+    }
+
+    @Test
+    @DisplayName("소품샵은 작성중 계약서 목록에서 요청한 작가 계약서를 조회한다")
+    void givenShopUser_whenGetInProgressContractDocuments_thenReturnArtistCounterpartyRows() {
+        Shop shop = shopWithId(SHOP_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(shop));
+        given(contractRepository.findInProgressDocumentRowsByShopId(
+                SHOP_ID,
+                ContractStatus.PENDING,
+                List.of(ContractDocumentStatus.SHOP_SENT, ContractDocumentStatus.ARTIST_SUBMITTED)
+        )).willReturn(List.of(inProgressContractDocumentRow(
+                CONTRACT_ID,
+                ARTIST_ID,
+                "Postman 도자기 작가",
+                ContractDocumentStatus.SHOP_SENT
+        )));
+
+        InProgressContractDocumentListResponse response =
+                contractService.getInProgressContractDocuments(USER_ID);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getContractId()).isEqualTo(CONTRACT_ID);
+        assertThat(response.getItems().get(0).getViewerType()).isEqualTo("SHOP");
+        assertThat(response.getItems().get(0).getCounterpartyId()).isEqualTo(ARTIST_ID);
+        assertThat(response.getItems().get(0).getCounterpartyName()).isEqualTo("Postman 도자기 작가");
+        assertThat(response.getItems().get(0).getContractDocumentStatus()).isEqualTo(ContractDocumentStatus.SHOP_SENT);
+        assertThat(response.getItems().get(0).getDetailApiPath())
+                .isEqualTo("/api/v1/contracts/artists/" + CONTRACT_ID);
+    }
+
+    @Test
+    @DisplayName("작가는 작성중 계약서 목록에서 요청한 소품샵 계약서를 조회한다")
+    void givenArtistUser_whenGetInProgressContractDocuments_thenReturnShopCounterpartyRows() {
+        Artist artist = artistWithId(ARTIST_ID);
+
+        given(shopRepository.findByUser_Id(USER_ID)).willReturn(Optional.empty());
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(contractRepository.findInProgressDocumentRowsByArtistId(
+                ARTIST_ID,
+                ContractStatus.PENDING,
+                List.of(ContractDocumentStatus.SHOP_SENT, ContractDocumentStatus.ARTIST_SUBMITTED)
+        )).willReturn(List.of(inProgressContractDocumentRow(
+                CONTRACT_ID,
+                SHOP_ID,
+                "Postman 테스트 소품샵",
+                ContractDocumentStatus.ARTIST_SUBMITTED
+        )));
+
+        InProgressContractDocumentListResponse response =
+                contractService.getInProgressContractDocuments(USER_ID);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getContractId()).isEqualTo(CONTRACT_ID);
+        assertThat(response.getItems().get(0).getViewerType()).isEqualTo("ARTIST");
+        assertThat(response.getItems().get(0).getCounterpartyId()).isEqualTo(SHOP_ID);
+        assertThat(response.getItems().get(0).getCounterpartyName()).isEqualTo("Postman 테스트 소품샵");
+        assertThat(response.getItems().get(0).getContractDocumentStatus())
+                .isEqualTo(ContractDocumentStatus.ARTIST_SUBMITTED);
+        assertThat(response.getItems().get(0).getDetailApiPath())
+                .isEqualTo("/api/v1/contracts/shops/" + CONTRACT_ID);
     }
 
     @Test
@@ -903,6 +967,50 @@ class ContractServiceTest {
             @Override
             public LocalDate getContractEndDate() {
                 return CONTRACT_END_DATE;
+            }
+        };
+    }
+
+    private InProgressContractDocumentRow inProgressContractDocumentRow(
+            Long contractId,
+            Long counterpartyId,
+            String counterpartyName,
+            ContractDocumentStatus documentStatus
+    ) {
+        return new InProgressContractDocumentRow() {
+            @Override
+            public Long getContractId() {
+                return contractId;
+            }
+
+            @Override
+            public Long getCounterpartyId() {
+                return counterpartyId;
+            }
+
+            @Override
+            public String getCounterpartyName() {
+                return counterpartyName;
+            }
+
+            @Override
+            public LocalDate getContractDate() {
+                return CONTRACT_DATE;
+            }
+
+            @Override
+            public LocalDate getContractStartDate() {
+                return CONTRACT_START_DATE;
+            }
+
+            @Override
+            public LocalDate getContractEndDate() {
+                return CONTRACT_END_DATE;
+            }
+
+            @Override
+            public ContractDocumentStatus getContractDocumentStatus() {
+                return documentStatus;
             }
         };
     }
