@@ -22,6 +22,7 @@ import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResult
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.SendContractRequest;
+import app.dearobjet.backend.domain.contract.dto.ShopSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.SubmitArtistContractRequest;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
@@ -37,6 +38,7 @@ import app.dearobjet.backend.domain.contract.repository.ContractProductStockMove
 import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.artist.entity.Artist;
 import app.dearobjet.backend.domain.contract.dto.projection.ArtistSuggestionRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ShopSuggestionRow;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.ArtistRepository;
@@ -64,6 +66,7 @@ public class ContractService {
 
     private static final int TERMINATION_GRACE_PERIOD_DAYS = 14;
     private static final int ARTIST_SUGGESTION_LIMIT = 10;
+    private static final int SHOP_SUGGESTION_LIMIT = 10;
     private static final int ARTIST_ACCOUNT_SEARCH_LIMIT = 10;
     private static final int MIN_ARTIST_ACCOUNT_SEARCH_KEYWORD_LENGTH = 2;
 
@@ -295,6 +298,26 @@ public class ContractService {
         return ArtistSuggestionListResponse.from(
                 rows.stream()
                         .limit(ARTIST_SUGGESTION_LIMIT)
+                        .toList()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ShopSuggestionListResponse getShopSuggestions(Long userId) {
+        Artist artist = getArtistByUserId(userId);
+        List<ShopSuggestionRow> rows = new ArrayList<>(contractRepository.findShopSuggestionRows(
+                artist.getId(),
+                Role.SHOP,
+                UserStatus.ACTIVE,
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                LocalDate.now()
+        ));
+
+        Collections.shuffle(rows);
+        return ShopSuggestionListResponse.from(
+                rows.stream()
+                        .limit(SHOP_SUGGESTION_LIMIT)
                         .toList()
         );
     }

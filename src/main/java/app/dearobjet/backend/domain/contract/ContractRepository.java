@@ -8,6 +8,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow
 import app.dearobjet.backend.domain.contract.dto.projection.InProgressContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ShopSuggestionRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
 import app.dearobjet.backend.domain.contract.enums.ContractProductListingStatus;
@@ -456,6 +457,44 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
     List<ArtistSuggestionRow> findArtistSuggestionRows(
             @Param("shopId") Long shopId,
             @Param("artistRole") Role artistRole,
+            @Param("activeStatus") UserStatus activeStatus,
+            @Param("pendingStatus") ContractStatus pendingStatus,
+            @Param("approvedStatus") ContractStatus approvedStatus,
+            @Param("today") java.time.LocalDate today
+    );
+
+    @Query("""
+            select s.shopId as shopId,
+                   u.id as userId,
+                   bp.businessName as shopName,
+                   u.profileUrl as shopImageUrl,
+                   bp.specialty as specialty,
+                   s.instagramId as instagramId
+            from Shop s
+            join s.user u
+            join s.businessProfile bp
+            where u.role = :shopRole
+              and u.userStatus = :activeStatus
+              and not exists (
+                  select 1
+                  from ShopArtistContract c
+                  where c.artist.id = :artistId
+                    and c.shop = s
+                    and (
+                        c.contractStatus = :pendingStatus
+                        or (
+                            c.contractStatus = :approvedStatus
+                            and (
+                                c.contractEndDate is null
+                                or c.contractEndDate >= :today
+                            )
+                        )
+                    )
+              )
+            """)
+    List<ShopSuggestionRow> findShopSuggestionRows(
+            @Param("artistId") Long artistId,
+            @Param("shopRole") Role shopRole,
             @Param("activeStatus") UserStatus activeStatus,
             @Param("pendingStatus") ContractStatus pendingStatus,
             @Param("approvedStatus") ContractStatus approvedStatus,

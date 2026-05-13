@@ -22,6 +22,7 @@ import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResult
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.SendContractRequest;
+import app.dearobjet.backend.domain.contract.dto.ShopSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.SubmitArtistContractRequest;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.global.api.ApiResponse;
@@ -164,6 +165,14 @@ public class ContractController {
             @RequestParam(required = false) Long userId
     ) {
         return ApiResponse.of(contractService.getArtistSuggestions(resolveUserId(userDetails, userId)));
+    }
+
+    @GetMapping("/shops/suggestions")
+    public ApiResponse<ShopSuggestionListResponse> getShopSuggestions(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ApiResponse.of(contractService.getShopSuggestions(resolveUserId(userDetails, userId)));
     }
 
     @GetMapping("/artists/search")
