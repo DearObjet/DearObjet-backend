@@ -13,7 +13,6 @@ import app.dearobjet.backend.domain.post.entity.Post;
 import app.dearobjet.backend.domain.post.repository.PostRepository;
 import app.dearobjet.backend.domain.post.service.PostService;
 import app.dearobjet.backend.domain.user.entity.User;
-import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
 import app.dearobjet.backend.global.exception.BusinessException;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
@@ -50,9 +49,9 @@ class PostServiceTest {
 
     @Test
     void createPost_savesPost() {
-        User user = User.builder().id(1L).name("작가").role(Role.ARTIST).build();
+        User user = User.builder().id(1L).name("작가").build();
         MockMultipartFile image = new MockMultipartFile("images", "img.jpg", "image/jpeg", "img".getBytes());
-        CreatePostRequest request = new CreatePostRequest("제목", "내용", true);
+        CreatePostRequest request = new CreatePostRequest("내용", true);
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(s3FileUploadService.uploadPostImage(image, 1L)).willReturn("https://cdn/post.jpg");
@@ -61,12 +60,8 @@ class PostServiceTest {
             return Post.builder()
                     .postId(100L)
                     .user(post.getUser())
-                    .title(post.getTitle())
                     .content(post.getContent())
                     .imageUrls(post.getImageUrls())
-                    .viewCount(0)
-                    .likeCount(0)
-                    .commentCount(0)
                     .isPublic(post.getIsPublic())
                     .build();
         });
@@ -74,26 +69,16 @@ class PostServiceTest {
         PostResponse response = postService.createPost(1L, request, List.of(image));
 
         assertThat(response.postId()).isEqualTo(100L);
-        assertThat(response.title()).isEqualTo("제목");
         assertThat(response.content()).isEqualTo("내용");
         assertThat(response.imageUrls()).containsExactly("https://cdn/post.jpg");
         assertThat(response.isPublic()).isTrue();
     }
 
     @Test
-    void createPost_throwsWhenNotArtist() {
-        User user = User.builder().id(1L).role(Role.CUSTOMER).build();
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
-
-        assertThatThrownBy(() -> postService.createPost(1L, new CreatePostRequest("제목", "내용", true), null))
-                .isInstanceOf(BusinessException.class);
-    }
-
-    @Test
     void createPost_throwsWhenUserNotFound() {
         given(userRepository.findById(1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.createPost(1L, new CreatePostRequest("제목", "내용", true), null))
+        assertThatThrownBy(() -> postService.createPost(1L, new CreatePostRequest("내용", true), null))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -103,13 +88,11 @@ class PostServiceTest {
         Post post1 = Post.builder()
                 .postId(2L)
                 .user(user)
-                .title("제목2")
                 .imageUrls("[\"https://cdn/2.jpg\"]")
                 .build();
         Post post2 = Post.builder()
                 .postId(1L)
                 .user(user)
-                .title("제목1")
                 .imageUrls("[]")
                 .build();
 
@@ -131,11 +114,8 @@ class PostServiceTest {
         Post post = Post.builder()
                 .postId(1L)
                 .user(user)
-                .title("제목")
                 .content("내용")
                 .imageUrls("[\"https://cdn/1.jpg\",\"https://cdn/2.jpg\"]")
-                .viewCount(0)
-                .likeCount(0)
                 .isPublic(true)
                 .build();
 
@@ -144,7 +124,7 @@ class PostServiceTest {
         PostResponse response = postService.getPost(1L);
 
         assertThat(response.postId()).isEqualTo(1L);
-        assertThat(response.title()).isEqualTo("제목");
+        assertThat(response.content()).isEqualTo("내용");
         assertThat(response.imageUrls()).containsExactly("https://cdn/1.jpg", "https://cdn/2.jpg");
     }
 
@@ -162,22 +142,18 @@ class PostServiceTest {
         Post post = Post.builder()
                 .postId(1L)
                 .user(user)
-                .title("이전")
                 .content("이전내용")
                 .imageUrls("[\"https://cdn/old.jpg\"]")
-                .viewCount(0)
-                .likeCount(0)
                 .isPublic(true)
                 .build();
         MockMultipartFile image = new MockMultipartFile("images", "new.jpg", "image/jpeg", "img".getBytes());
-        UpdatePostRequest request = new UpdatePostRequest("새제목", "새내용", true);
+        UpdatePostRequest request = new UpdatePostRequest("새내용", true);
 
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
         given(s3FileUploadService.uploadPostImage(image, 1L)).willReturn("https://cdn/new.jpg");
 
         PostResponse response = postService.updatePost(1L, 1L, request, List.of(image));
 
-        assertThat(response.title()).isEqualTo("새제목");
         assertThat(response.content()).isEqualTo("새내용");
         assertThat(response.imageUrls()).containsExactly("https://cdn/new.jpg");
     }
@@ -188,20 +164,17 @@ class PostServiceTest {
         Post post = Post.builder()
                 .postId(1L)
                 .user(user)
-                .title("이전")
                 .content("이전내용")
                 .imageUrls("[\"https://cdn/old.jpg\"]")
-                .viewCount(0)
-                .likeCount(0)
                 .isPublic(true)
                 .build();
-        UpdatePostRequest request = new UpdatePostRequest("새제목", "새내용", true);
+        UpdatePostRequest request = new UpdatePostRequest("새내용", true);
 
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
 
         PostResponse response = postService.updatePost(1L, 1L, request, null);
 
-        assertThat(response.title()).isEqualTo("새제목");
+        assertThat(response.content()).isEqualTo("새내용");
         assertThat(response.imageUrls()).containsExactly("https://cdn/old.jpg");
     }
 
@@ -212,7 +185,7 @@ class PostServiceTest {
 
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.updatePost(1L, 1L, new UpdatePostRequest("새제목", "새내용", true), null))
+        assertThatThrownBy(() -> postService.updatePost(1L, 1L, new UpdatePostRequest("새내용", true), null))
                 .isInstanceOf(BusinessException.class);
     }
 
