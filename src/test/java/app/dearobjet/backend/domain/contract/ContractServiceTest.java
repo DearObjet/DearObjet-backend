@@ -20,6 +20,7 @@ import app.dearobjet.backend.domain.contract.dto.ManagedShopContractActionResult
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractDetailResponse;
 import app.dearobjet.backend.domain.contract.dto.ManagedShopContractListResponse;
 import app.dearobjet.backend.domain.contract.dto.SendContractRequest;
+import app.dearobjet.backend.domain.contract.dto.ShopSuggestionListResponse;
 import app.dearobjet.backend.domain.contract.dto.SubmitArtistContractRequest;
 import app.dearobjet.backend.domain.contract.dto.UpdateContractMemoRequest;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
@@ -29,6 +30,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.CompletedContractDoc
 import app.dearobjet.backend.domain.contract.dto.projection.InProgressContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ShopSuggestionRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
@@ -447,6 +449,65 @@ class ContractServiceTest {
         assertThat(response.getItems().get(0).getArtistName()).isEqualTo("Postman 추천 작가");
         assertThat(response.getItems().get(0).getArtistImageUrl()).isEqualTo("https://image.test/suggested.png");
         assertThat(response.getItems().get(0).getInstagramId()).isEqualTo("suggested_artist");
+    }
+
+    @Test
+    @DisplayName("입점 소품샵 제안 목록에서 랜덤 최대 10곳을 조회한다")
+    void givenEligibleShops_whenGetShopSuggestions_thenReturnUpToTenShops() {
+        Artist artist = artistWithId(ARTIST_ID);
+        List<ShopSuggestionRow> rows = java.util.stream.LongStream.rangeClosed(1, 12)
+                .mapToObj(index -> shopSuggestionRow(
+                        SHOP_ID + index,
+                        USER_ID + index,
+                        "추천 소품샵 " + index
+                ))
+                .toList();
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(contractRepository.findShopSuggestionRows(
+                eq(ARTIST_ID),
+                eq(Role.SHOP),
+                eq(UserStatus.ACTIVE),
+                eq(ContractStatus.PENDING),
+                eq(ContractStatus.APPROVED),
+                any(LocalDate.class)
+        )).willReturn(rows);
+
+        ShopSuggestionListResponse response = contractService.getShopSuggestions(USER_ID);
+
+        assertThat(response.getItems()).hasSize(10);
+        assertThat(response.getItems())
+                .allSatisfy(item -> {
+                    assertThat(item.getShopId()).isNotNull();
+                    assertThat(item.getUserId()).isNotNull();
+                    assertThat(item.getShopName()).startsWith("추천 소품샵 ");
+                    assertThat(item.getSpecialty()).isEqualTo(Specialty.LIVING_GOODS);
+                });
+    }
+
+    @Test
+    @DisplayName("입점 소품샵 제안 목록에 채팅방 생성용 사용자 ID를 포함한다")
+    void givenEligibleShop_whenGetShopSuggestions_thenReturnShopAndUserIdentifiers() {
+        Artist artist = artistWithId(ARTIST_ID);
+
+        given(artistRepository.findByUserId(USER_ID)).willReturn(Optional.of(artist));
+        given(contractRepository.findShopSuggestionRows(
+                eq(ARTIST_ID),
+                eq(Role.SHOP),
+                eq(UserStatus.ACTIVE),
+                eq(ContractStatus.PENDING),
+                eq(ContractStatus.APPROVED),
+                any(LocalDate.class)
+        )).willReturn(List.of(shopSuggestionRow(SHOP_ID, USER_ID + 100, "Postman 추천 소품샵")));
+
+        ShopSuggestionListResponse response = contractService.getShopSuggestions(USER_ID);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getShopId()).isEqualTo(SHOP_ID);
+        assertThat(response.getItems().get(0).getUserId()).isEqualTo(USER_ID + 100);
+        assertThat(response.getItems().get(0).getShopName()).isEqualTo("Postman 추천 소품샵");
+        assertThat(response.getItems().get(0).getShopImageUrl()).isEqualTo("https://image.test/suggested-shop.png");
+        assertThat(response.getItems().get(0).getInstagramId()).isEqualTo("suggested_shop");
     }
 
     @Test
@@ -923,6 +984,40 @@ class ContractServiceTest {
             @Override
             public String getInstagramId() {
                 return "suggested_artist";
+            }
+        };
+    }
+
+    private ShopSuggestionRow shopSuggestionRow(Long shopId, Long userId, String shopName) {
+        return new ShopSuggestionRow() {
+            @Override
+            public Long getShopId() {
+                return shopId;
+            }
+
+            @Override
+            public Long getUserId() {
+                return userId;
+            }
+
+            @Override
+            public String getShopName() {
+                return shopName;
+            }
+
+            @Override
+            public String getShopImageUrl() {
+                return "https://image.test/suggested-shop.png";
+            }
+
+            @Override
+            public Specialty getSpecialty() {
+                return Specialty.LIVING_GOODS;
+            }
+
+            @Override
+            public String getInstagramId() {
+                return "suggested_shop";
             }
         };
     }
