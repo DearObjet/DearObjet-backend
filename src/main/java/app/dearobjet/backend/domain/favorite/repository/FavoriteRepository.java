@@ -18,6 +18,12 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
             Long targetId
     );
 
+    boolean existsByUser_IdAndTargetTypeAndTargetId(
+            Long userId,
+            FavoriteTargetType targetType,
+            Long targetId
+    );
+
     void deleteByUser_IdAndTargetTypeAndTargetId(
             Long userId,
             FavoriteTargetType targetType,

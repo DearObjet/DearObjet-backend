@@ -2,6 +2,8 @@ package app.dearobjet.backend.domain.shop.service;
 
 import app.dearobjet.backend.domain.contract.ContractRepository;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
+import app.dearobjet.backend.domain.favorite.enums.FavoriteTargetType;
+import app.dearobjet.backend.domain.favorite.repository.FavoriteRepository;
 import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
 import app.dearobjet.backend.domain.shop.dto.ShopContractedArtistListResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopGeocodeResponse;
@@ -27,6 +29,7 @@ public class ShopMapService {
 
     private final ShopRepository shopRepository;
     private final ContractRepository contractRepository;
+    private final FavoriteRepository favoriteRepository;
     private final KakaoLocalClient kakaoLocalClient;
     private final ShopService shopService;
 
@@ -36,10 +39,17 @@ public class ShopMapService {
         return new ShopMapResponse(markers);
     }
 
-    public ShopDetailResponse getShopDetail(Long shopId) {
+    public ShopDetailResponse getShopDetail(Long currentUserId, Long shopId) {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
-        return ShopDetailResponse.from(shop, shopService.getBusinessHours(shopId));
+        boolean favorite = currentUserId != null
+                && favoriteRepository.existsByUser_IdAndTargetTypeAndTargetId(
+                        currentUserId,
+                        FavoriteTargetType.SHOP,
+                        shopId
+                );
+
+        return ShopDetailResponse.from(shop, shopService.getBusinessHours(shopId), favorite);
     }
 
     public ShopContractedArtistListResponse getContractedArtists(Long shopId) {

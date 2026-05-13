@@ -34,8 +34,12 @@ public class ShopController {
     private final StoryService storyService;
 
     @GetMapping("/{shopId}")
-    public ApiResponse<ShopDetailResponse> getShopDetail(@PathVariable Long shopId) {
-        return ApiResponse.of(shopMapService.getShopDetail(shopId));
+    public ApiResponse<ShopDetailResponse> getShopDetail(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long shopId
+    ) {
+        Long currentUserId = userDetails == null ? null : userDetails.getUserId();
+        return ApiResponse.of(shopMapService.getShopDetail(currentUserId, shopId));
     }
 
     @GetMapping("/{shopId}/artists")
