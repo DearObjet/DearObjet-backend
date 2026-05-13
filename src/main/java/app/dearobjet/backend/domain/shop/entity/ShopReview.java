@@ -6,7 +6,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "shop_reviews")
+@Table(
+        name = "shop_reviews",
+        indexes = {
+                @Index(name = "idx_shop_reviews_shop_id_review_id", columnList = "shop_id, shop_reviews_id")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -16,7 +21,7 @@ public class ShopReview extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "shop_reviews_id")
-    private Long shopReviewsId;
+    private Long shopReviewId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shop_id", nullable = false)
@@ -26,11 +31,24 @@ public class ShopReview extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    private Integer rating;
+    @Column
+    private String title;
 
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "rated_at")
-    private java.time.LocalDateTime ratedAt;
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    public void update(String title, String content, String imageUrl) {
+        this.title = title;
+        this.content = content;
+        if (imageUrl != null && !imageUrl.isBlank()) {
+            this.imageUrl = imageUrl;
+        }
+    }
+
+    public boolean isOwnedBy(Long userId) {
+        return userId != null && user != null && user.getId().equals(userId);
+    }
 }
