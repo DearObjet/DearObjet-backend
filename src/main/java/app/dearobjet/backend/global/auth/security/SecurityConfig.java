@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/shops/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/shops/*/classes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/shops/*/stories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shops/*/reviews").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/shops/map/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/classes/*/available-slots").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/shops/map/geocode").hasRole("ADMIN")
