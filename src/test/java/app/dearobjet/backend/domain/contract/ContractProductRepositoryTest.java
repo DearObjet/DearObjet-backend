@@ -8,6 +8,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRo
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ShopSuggestionRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
@@ -817,6 +818,111 @@ class ContractProductRepositoryTest {
     }
 
     @Test
+    @DisplayName("입점 소품샵 제안 목록은 현재 작가와 진행중 계약이 없는 활성 소품샵만 반환한다")
+    void givenShopsAndContracts_whenQueryShopSuggestions_thenExcludeCurrentArtistActiveContractsOnly() {
+        User artistUser = createUser(
+                "shop-suggestion-artist@test.com",
+                "추천 조회 작가",
+                Role.ARTIST,
+                "01093500001",
+                null
+        );
+        User otherArtistUser = createUser(
+                "shop-suggestion-other-artist@test.com",
+                "다른 추천 조회 작가",
+                Role.ARTIST,
+                "01093500002",
+                null
+        );
+        Artist artist = createArtist(artistUser, "추천 조회 작가", Specialty.CERAMIC);
+        Artist otherArtist = createArtist(otherArtistUser, "다른 추천 조회 작가", Specialty.CERAMIC);
+
+        Shop eligibleShop = createShop(
+                createUser("shop-suggestion-eligible@test.com", "추천 가능 소품샵", Role.SHOP, "01093500003", null),
+                "추천 가능 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop rejectedShop = createShop(
+                createUser("shop-suggestion-rejected@test.com", "거절 이력 소품샵", Role.SHOP, "01093500004", null),
+                "거절 이력 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        Shop terminatedShop = createShop(
+                createUser("shop-suggestion-terminated@test.com", "해지 이력 소품샵", Role.SHOP, "01093500005", null),
+                "해지 이력 소품샵",
+                Specialty.FABRIC_TEXTILE
+        );
+        Shop otherArtistContractShop = createShop(
+                createUser("shop-suggestion-other-contract@test.com", "다른작가 계약 소품샵", Role.SHOP, "01093500006", null),
+                "다른작가 계약 소품샵",
+                Specialty.INTERIOR_DECOR
+        );
+        Shop pendingShop = createShop(
+                createUser("shop-suggestion-pending@test.com", "대기 제외 소품샵", Role.SHOP, "01093500007", null),
+                "대기 제외 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop approvedShop = createShop(
+                createUser("shop-suggestion-approved@test.com", "계약 제외 소품샵", Role.SHOP, "01093500008", null),
+                "계약 제외 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop endedShop = createShop(
+                createUser("shop-suggestion-ended@test.com", "만료 가능 소품샵", Role.SHOP, "01093500009", null),
+                "만료 가능 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop expiredApprovedShop = createShop(
+                createUser("shop-suggestion-expired-approved@test.com", "종료일 경과 소품샵", Role.SHOP, "01093500010", null),
+                "종료일 경과 소품샵",
+                Specialty.LIVING_GOODS
+        );
+
+        createContract(artist, rejectedShop, ContractStatus.REJECTED, ContractRequestType.NONE, null, null);
+        createContract(artist, terminatedShop, ContractStatus.TERMINATED, ContractRequestType.NONE, null, null);
+        createContract(otherArtist, otherArtistContractShop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        createContract(artist, pendingShop, ContractStatus.PENDING, ContractRequestType.EXTENSION, null, null);
+        createContract(artist, approvedShop, ContractStatus.APPROVED, ContractRequestType.NONE, null, null);
+        createContract(artist, endedShop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        createContract(
+                artist,
+                expiredApprovedShop,
+                ContractStatus.APPROVED,
+                ContractRequestType.NONE,
+                QUERY_TODAY.minusMonths(2),
+                QUERY_TODAY.minusDays(1)
+        );
+        flushAndClear();
+
+        var rows = contractRepository.findShopSuggestionRows(
+                artist.getId(),
+                Role.SHOP,
+                UserStatus.ACTIVE,
+                ContractStatus.PENDING,
+                ContractStatus.APPROVED,
+                QUERY_TODAY
+        );
+
+        assertThat(rows).extracting("shopName")
+                .contains(
+                        "추천 가능 소품샵",
+                        "거절 이력 소품샵",
+                        "해지 이력 소품샵",
+                        "다른작가 계약 소품샵",
+                        "만료 가능 소품샵",
+                        "종료일 경과 소품샵"
+                )
+                .doesNotContain(
+                        "대기 제외 소품샵",
+                        "계약 제외 소품샵"
+                );
+        assertThat(findShopSuggestionRow(rows, "추천 가능 소품샵").getShopId())
+                .isEqualTo(eligibleShop.getShopId());
+        assertThat(findShopSuggestionRow(rows, "추천 가능 소품샵").getUserId())
+                .isEqualTo(eligibleShop.getUser().getId());
+    }
+
+    @Test
     @DisplayName("계약서 발송용 작가 계정 검색은 상호명, 사용자 이름, 이메일로 검색한다")
     void givenKeyword_whenSearchArtistAccounts_thenReturnMatchedActiveArtists() {
         User shopUser = createUser(
@@ -1371,6 +1477,13 @@ class ContractProductRepositoryTest {
     private ArtistSuggestionRow findSuggestionRow(List<ArtistSuggestionRow> rows, String artistName) {
         return rows.stream()
                 .filter(row -> artistName.equals(row.getArtistName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ShopSuggestionRow findShopSuggestionRow(List<ShopSuggestionRow> rows, String shopName) {
+        return rows.stream()
+                .filter(row -> shopName.equals(row.getShopName()))
                 .findFirst()
                 .orElseThrow();
     }
