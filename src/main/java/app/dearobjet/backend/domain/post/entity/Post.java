@@ -25,7 +25,7 @@ public class Post extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "image_urls", columnDefinition = "JSON")
+    @Column(name = "image_urls", columnDefinition = "TEXT")
     private String imageUrls;
 
     @Column(name = "is_public")
