@@ -1,5 +1,6 @@
 package app.dearobjet.backend.domain.classes.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -16,11 +17,12 @@ public class ClassReservationListResponse {
 
     @Getter
     @AllArgsConstructor
+    @Schema(name = "ClassReservationListItem")
     public static class Item {
         private final String status;
         private final String reserverName;
         private final String phoneNumber;
-        private final Long reservationNumber;
+        private final Long reservationId;
         private final LocalDateTime usageDateTime;
         private final String className;
     }

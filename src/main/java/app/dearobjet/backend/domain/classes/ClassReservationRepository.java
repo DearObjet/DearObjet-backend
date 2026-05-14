@@ -35,6 +35,9 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
 
     Optional<ClassReservation> findByReservationIdAndUser_Id(Long reservationId, Long userId);
 
+    @EntityGraph(attributePaths = {"classes", "classes.shop"})
+    Optional<ClassReservation> findByReservationIdAndClasses_Shop_User_Id(Long reservationId, Long userId);
+
     List<ClassReservation> findByClasses_ClassesIdAndReservationTimeBetween(
             Long classesId,
             LocalDateTime start,
