@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.classes;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
+import app.dearobjet.backend.domain.classes.dto.ClassReservationSearchRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
 import app.dearobjet.backend.domain.classes.dto.MyClassReservationsResponse;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,12 +32,10 @@ public class ClassReservationController {
     @GetMapping("/class-reservations")
     public ApiResponse<ClassReservationListResponse> getReservations(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size
+            @ModelAttribute ClassReservationSearchRequest request
     ) {
         return ApiResponse.of(
-                classReservationService.getReservations(userDetails.getUserId(), status, page, size)
+                classReservationService.getReservations(userDetails.getUserId(), request)
         );
     }
 
@@ -63,6 +63,15 @@ public class ClassReservationController {
         return ApiResponse.of(
                 classReservationService.changeReservation(userDetails.getUserId(), reservationId, request)
         );
+    }
+
+    @PostMapping("/class-reservations/{reservationId}/confirm")
+    public ApiResponse<Void> confirmReservation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long reservationId
+    ) {
+        classReservationService.confirmReservation(userDetails.getUserId(), reservationId);
+        return ApiResponse.of(null);
     }
 
     @PostMapping("/class-reservations/{reservationId}/cancel")

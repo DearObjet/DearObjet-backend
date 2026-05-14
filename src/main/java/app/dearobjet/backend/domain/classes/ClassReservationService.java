@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.classes;
 
 import app.dearobjet.backend.domain.classes.dto.AvailableClassSlotsResponse;
 import app.dearobjet.backend.domain.classes.dto.ClassReservationListResponse;
+import app.dearobjet.backend.domain.classes.dto.ClassReservationSearchRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationRequest;
 import app.dearobjet.backend.domain.classes.dto.CreateClassReservationResponse;
 import app.dearobjet.backend.domain.classes.dto.MyClassReservationsResponse;
@@ -44,9 +45,13 @@ public class ClassReservationService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public ClassReservationListResponse getReservations(Long userId, String status, int page, int size) {
+    public ClassReservationListResponse getReservations(Long userId, ClassReservationSearchRequest request) {
         shopRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Shop not found for user: " + userId));
+
+        String status = request.getStatus();
+        int page = request.getPage();
+        int size = request.getSize();
 
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0),
@@ -123,6 +128,15 @@ public class ClassReservationService {
 
         validateCancelableReservation(reservation);
         reservation.cancel();
+    }
+
+    @Transactional
+    public void confirmReservation(Long userId, Long reservationId) {
+        ClassReservation reservation = classReservationRepository
+                .findByReservationIdAndClasses_Shop_User_Id(reservationId, userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "예약을 찾을 수 없습니다."));
+
+        reservation.confirm();
     }
 
     @Transactional
