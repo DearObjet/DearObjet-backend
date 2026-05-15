@@ -1,6 +1,9 @@
 package app.dearobjet.backend.domain.shop.service;
 
+import app.dearobjet.backend.domain.contract.ContractRepository;
+import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
+import app.dearobjet.backend.domain.shop.dto.ShopContractedArtistListResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopGeocodeResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopDetailResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopMapItemResponse;
@@ -9,6 +12,7 @@ import app.dearobjet.backend.domain.shop.entity.Shop;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShopMapService {
 
     private final ShopRepository shopRepository;
+    private final ContractRepository contractRepository;
     private final KakaoLocalClient kakaoLocalClient;
     private final ShopService shopService;
 
@@ -35,6 +40,20 @@ public class ShopMapService {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
         return ShopDetailResponse.from(shop, shopService.getBusinessHours(shopId));
+    }
+
+    public ShopContractedArtistListResponse getContractedArtists(Long shopId) {
+        if (!shopRepository.existsById(shopId)) {
+            throw new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND);
+        }
+
+        return ShopContractedArtistListResponse.from(
+                contractRepository.findCurrentContractedArtistRowsByShopId(
+                        shopId,
+                        ContractStatus.APPROVED,
+                        LocalDate.now()
+                )
+        );
     }
 
     @Transactional

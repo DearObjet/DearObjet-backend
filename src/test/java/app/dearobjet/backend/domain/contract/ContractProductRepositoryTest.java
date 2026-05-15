@@ -8,6 +8,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ArtistShipmentShopRo
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryProductRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ShopContractedArtistRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ShopSuggestionRow;
 import app.dearobjet.backend.domain.contract.entity.ContractProduct;
 import app.dearobjet.backend.domain.contract.entity.ContractProductStockMovement;
@@ -124,6 +125,115 @@ class ContractProductRepositoryTest {
         assertThat(noProductArtistRow.getContractId()).isEqualTo(fixture.artistBContract().getShopArtistContractsId());
         assertThat(noProductArtistRow.getSpecialty()).isEqualTo(Specialty.STATIONERY_PAPER);
         assertThat(noProductArtistRow.getRecentStockedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("소품샵 상세 입점작가 목록은 현재 유효한 승인 계약 작가만 반환한다")
+    void givenShopContracts_whenQueryCurrentContractedArtists_thenReturnOnlyCurrentApprovedArtists() {
+        Shop shop = createShop(
+                createUser("map-shop@test.com", "지도 소품샵", Role.SHOP, "01090100001", null),
+                "지도 테스트 소품샵",
+                Specialty.LIVING_GOODS
+        );
+        Shop otherShop = createShop(
+                createUser("map-other-shop@test.com", "다른 지도 소품샵", Role.SHOP, "01090100002", null),
+                "다른 지도 소품샵",
+                Specialty.HANDMADE_CRAFT
+        );
+        Artist noEndArtist = createArtist(
+                createUser(
+                        "map-no-end-artist@test.com",
+                        "무기한 작가",
+                        Role.ARTIST,
+                        "01090100003",
+                        "https://image.test/no-end.png"
+                ),
+                "무기한 작가",
+                Specialty.CERAMIC
+        );
+        Artist todayEndArtist = createArtist(
+                createUser(
+                        "map-today-end-artist@test.com",
+                        "오늘종료 작가",
+                        Role.ARTIST,
+                        "01090100004",
+                        "https://image.test/today-end.png"
+                ),
+                "오늘종료 작가",
+                Specialty.STATIONERY_PAPER
+        );
+        Artist duplicateArtist = createArtist(
+                createUser(
+                        "map-duplicate-artist@test.com",
+                        "중복계약 작가",
+                        Role.ARTIST,
+                        "01090100005",
+                        "https://image.test/duplicate.png"
+                ),
+                "중복계약 작가",
+                Specialty.FABRIC_TEXTILE
+        );
+        Artist expiredArtist = createArtist(
+                createUser("map-expired-artist@test.com", "만료 작가", Role.ARTIST, "01090100006", null),
+                "만료 작가",
+                Specialty.INTERIOR_DECOR
+        );
+        Artist pendingArtist = createArtist(
+                createUser("map-pending-artist@test.com", "대기 작가", Role.ARTIST, "01090100007", null),
+                "대기 작가",
+                Specialty.CERAMIC
+        );
+        Artist endedArtist = createArtist(
+                createUser("map-ended-artist@test.com", "종료 작가", Role.ARTIST, "01090100008", null),
+                "종료 작가",
+                Specialty.CERAMIC
+        );
+        Artist otherShopArtist = createArtist(
+                createUser("map-other-shop-artist@test.com", "다른샵 작가", Role.ARTIST, "01090100009", null),
+                "다른샵 작가",
+                Specialty.CERAMIC
+        );
+
+        createContract(noEndArtist, shop, ContractStatus.APPROVED, QUERY_TODAY.minusMonths(1), null);
+        createContract(todayEndArtist, shop, ContractStatus.APPROVED, QUERY_TODAY.minusMonths(1), QUERY_TODAY);
+        createContract(
+                duplicateArtist,
+                shop,
+                ContractStatus.APPROVED,
+                QUERY_TODAY.minusMonths(2),
+                QUERY_TODAY.plusMonths(1)
+        );
+        createContract(
+                duplicateArtist,
+                shop,
+                ContractStatus.APPROVED,
+                QUERY_TODAY.minusMonths(1),
+                QUERY_TODAY.plusMonths(2)
+        );
+        createContract(
+                expiredArtist,
+                shop,
+                ContractStatus.APPROVED,
+                QUERY_TODAY.minusMonths(2),
+                QUERY_TODAY.minusDays(1)
+        );
+        createContract(pendingArtist, shop, ContractStatus.PENDING, ContractRequestType.NONE, null, null);
+        createContract(endedArtist, shop, ContractStatus.ENDED, ContractRequestType.NONE, null, null);
+        createContract(otherShopArtist, otherShop, ContractStatus.APPROVED, QUERY_TODAY.minusMonths(1), null);
+        flushAndClear();
+
+        List<ShopContractedArtistRow> rows = contractRepository.findCurrentContractedArtistRowsByShopId(
+                shop.getShopId(),
+                ContractStatus.APPROVED,
+                QUERY_TODAY
+        );
+
+        assertThat(rows).extracting("artistName")
+                .containsExactly("무기한 작가", "오늘종료 작가", "중복계약 작가");
+        assertThat(rows).filteredOn(row -> row.getArtistName().equals("중복계약 작가")).hasSize(1);
+        assertThat(findContractedArtistRow(rows, "무기한 작가").getArtistId()).isEqualTo(noEndArtist.getId());
+        assertThat(findContractedArtistRow(rows, "무기한 작가").getArtistImageUrl())
+                .isEqualTo("https://image.test/no-end.png");
     }
 
     @Test
@@ -1438,6 +1548,16 @@ class ContractProductRepositoryTest {
     }
 
     private ContractInventoryRow findArtistRow(List<ContractInventoryRow> rows, String artistName) {
+        return rows.stream()
+                .filter(row -> artistName.equals(row.getArtistName()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ShopContractedArtistRow findContractedArtistRow(
+            List<ShopContractedArtistRow> rows,
+            String artistName
+    ) {
         return rows.stream()
                 .filter(row -> artistName.equals(row.getArtistName()))
                 .findFirst()
