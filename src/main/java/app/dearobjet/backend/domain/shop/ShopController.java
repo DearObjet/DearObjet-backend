@@ -3,6 +3,7 @@ package app.dearobjet.backend.domain.shop;
 import app.dearobjet.backend.domain.classes.ClassesService;
 import app.dearobjet.backend.domain.classes.dto.ClassListResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopBusinessHoursResponse;
+import app.dearobjet.backend.domain.shop.dto.ShopContractedArtistListResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopDetailResponse;
 import app.dearobjet.backend.domain.shop.dto.UpdateBusinessHoursRequest;
 import app.dearobjet.backend.domain.shop.service.ShopMapService;
@@ -39,6 +40,12 @@ public class ShopController {
     ) {
         Long currentUserId = userDetails == null ? null : userDetails.getUserId();
         return ApiResponse.of(shopMapService.getShopDetail(currentUserId, shopId));
+
+    }
+
+    @GetMapping("/{shopId}/artists")
+    public ApiResponse<ShopContractedArtistListResponse> getShopContractedArtists(@PathVariable Long shopId) {
+        return ApiResponse.of(shopMapService.getContractedArtists(shopId));
     }
 
     @GetMapping("/{shopId}/classes")

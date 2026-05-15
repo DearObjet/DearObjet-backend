@@ -8,6 +8,7 @@ import app.dearobjet.backend.domain.contract.dto.projection.ContractInventoryRow
 import app.dearobjet.backend.domain.contract.dto.projection.InProgressContractDocumentRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedArtistContractRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ManagedShopContractRow;
+import app.dearobjet.backend.domain.contract.dto.projection.ShopContractedArtistRow;
 import app.dearobjet.backend.domain.contract.dto.projection.ShopSuggestionRow;
 import app.dearobjet.backend.domain.contract.entity.ShopArtistContract;
 import app.dearobjet.backend.domain.contract.enums.ContractDocumentStatus;
@@ -20,10 +21,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 public interface ContractRepository extends JpaRepository<ShopArtistContract, Long> {
 
@@ -179,6 +180,41 @@ public interface ContractRepository extends JpaRepository<ShopArtistContract, Lo
             @Param("shopId") Long shopId,
             @Param("contractStatus") ContractStatus contractStatus,
             @Param("listingStatus") ContractProductListingStatus listingStatus
+    );
+
+    @Query("""
+            select a.id as artistId,
+                   bp.businessName as artistName,
+                   u.profileUrl as artistImageUrl
+            from ShopArtistContract c
+            join c.artist a
+            join a.user u
+            join a.businessProfile bp
+            where c.shop.shopId = :shopId
+              and c.contractStatus = :contractStatus
+              and (
+                  c.contractEndDate is null
+                  or c.contractEndDate >= :today
+              )
+              and not exists (
+                  select 1
+                  from ShopArtistContract c2
+                  where c2.shop = c.shop
+                    and c2.artist = c.artist
+                    and c2.contractStatus = :contractStatus
+                    and (
+                        c2.contractEndDate is null
+                        or c2.contractEndDate >= :today
+                    )
+                    and c2.shopArtistContractsId > c.shopArtistContractsId
+              )
+            order by bp.businessName asc,
+                     a.id desc
+            """)
+    List<ShopContractedArtistRow> findCurrentContractedArtistRowsByShopId(
+            @Param("shopId") Long shopId,
+            @Param("contractStatus") ContractStatus contractStatus,
+            @Param("today") LocalDate today
     );
 
     @Query("""
