@@ -40,6 +40,7 @@ public class ShopController {
     ) {
         Long currentUserId = userDetails == null ? null : userDetails.getUserId();
         return ApiResponse.of(shopMapService.getShopDetail(currentUserId, shopId));
+
     }
 
     @GetMapping("/{shopId}/artists")

@@ -30,9 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShopMapService {
 
     private final ShopRepository shopRepository;
-    private final ContractRepository contractRepository;
     private final FavoriteRepository favoriteRepository;
-    private final ContractRepository contractRepository;
     private final KakaoLocalClient kakaoLocalClient;
     private final ShopService shopService;
 
