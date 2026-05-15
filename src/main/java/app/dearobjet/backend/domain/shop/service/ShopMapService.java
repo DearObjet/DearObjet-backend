@@ -4,6 +4,8 @@ import app.dearobjet.backend.domain.contract.ContractRepository;
 import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.favorite.enums.FavoriteTargetType;
 import app.dearobjet.backend.domain.favorite.repository.FavoriteRepository;
+import app.dearobjet.backend.domain.contract.ContractRepository;
+import app.dearobjet.backend.domain.contract.enums.ContractStatus;
 import app.dearobjet.backend.domain.shop.client.KakaoLocalClient;
 import app.dearobjet.backend.domain.shop.dto.ShopContractedArtistListResponse;
 import app.dearobjet.backend.domain.shop.dto.ShopGeocodeResponse;
@@ -30,6 +32,7 @@ public class ShopMapService {
     private final ShopRepository shopRepository;
     private final ContractRepository contractRepository;
     private final FavoriteRepository favoriteRepository;
+    private final ContractRepository contractRepository;
     private final KakaoLocalClient kakaoLocalClient;
     private final ShopService shopService;
 
