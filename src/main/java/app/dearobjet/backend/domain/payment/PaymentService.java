@@ -67,7 +67,7 @@ public class PaymentService {
         );
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = PaymentConfirmException.class)
     public void confirmPayment(Long userId, Long paymentId, ConfirmPaymentRequest req) {
         Payment payment = paymentRepository.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException(paymentId));
@@ -95,14 +95,15 @@ public class PaymentService {
             payment.markDone(req.getPaymentKey());
             order.updateStatus(OrderStatus.PAID);
         } catch (Exception e) {
+            // noRollbackFor 로 FAILED 상태를 커밋시켜 실패 이력이 유실되지 않도록 함
             payment.markFailed("CONFIRM_FAILED");
-            throw e;
+            throw new PaymentConfirmException(e);
         }
     }
 
     @Transactional
     public void cancelPayment(Long userId, Long paymentId, CancelPaymentRequest req) {
-        Payment payment = paymentRepository.findById(paymentId)
+        Payment payment = paymentRepository.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException(paymentId));
 
         Order order = payment.getOrder();
