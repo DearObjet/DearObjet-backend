@@ -51,6 +51,8 @@ public class SecurityConfig {
                                 "/ws/**"
                         ).permitAll()
 
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhooks/toss").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/notices/**").permitAll()

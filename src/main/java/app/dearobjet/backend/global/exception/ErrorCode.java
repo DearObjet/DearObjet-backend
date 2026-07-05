@@ -47,7 +47,10 @@ public enum ErrorCode {
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "공지사항을 찾을 수 없습니다"),
 
     // Product (P0XX)
-    PRODUCT_STOCK_CONFLICT(HttpStatus.CONFLICT, "P001", "상품 재고가 이미 변경되었습니다");
+    PRODUCT_STOCK_CONFLICT(HttpStatus.CONFLICT, "P001", "상품 재고가 이미 변경되었습니다"),
+
+    // Payment (PAY0XX)
+    PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "PAY001", "결제 승인에 실패했습니다");
 
     private final HttpStatus status;
     private final String code;
