@@ -1,3 +1,5 @@
+name: dearobjet
+
 services:
   db:
     image: postgres:16
