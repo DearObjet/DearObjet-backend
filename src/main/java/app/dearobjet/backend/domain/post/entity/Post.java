@@ -31,6 +31,10 @@ public class Post extends BaseTimeEntity {
     @Column(name = "is_public")
     private Boolean isPublic;
 
+    @Builder.Default
+    @Column(name = "blinded", nullable = false, columnDefinition = "boolean default false")
+    private Boolean blinded = false;
+
     public void update(String content, String imageUrls, Boolean isPublic) {
         this.content = content;
         if (imageUrls != null) {
@@ -39,5 +43,9 @@ public class Post extends BaseTimeEntity {
         if (isPublic != null) {
             this.isPublic = isPublic;
         }
+    }
+
+    public void changeBlinded(boolean blinded) {
+        this.blinded = blinded;
     }
 }

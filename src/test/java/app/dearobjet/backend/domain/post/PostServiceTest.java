@@ -96,7 +96,7 @@ class PostServiceTest {
                 .imageUrls("[]")
                 .build();
 
-        given(postRepository.findByUser_Id(any(), any()))
+        given(postRepository.findVisibleByUser(any(), any()))
                 .willReturn(new PageImpl<>(List.of(post1, post2)));
 
         PostListResponse response = postService.getPosts(1L, 1);

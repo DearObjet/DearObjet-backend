@@ -11,6 +11,7 @@ public record PostResponse(
         String content,
         List<String> imageUrls,
         Boolean isPublic,
+        Boolean blinded,
         LocalDateTime createdAt
 ) {
 }
