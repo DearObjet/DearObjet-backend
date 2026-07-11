@@ -34,6 +34,15 @@ public class Notice {
     @Column(columnDefinition = "TEXT")
     private String body;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "varchar(20) default 'PUBLISHED'")
+    private NoticeStatus status = NoticeStatus.PUBLISHED;   // DRAFT | PUBLISHED | HIDDEN
+
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean pinned = false;
+
     @Column(nullable = false)
     private OffsetDateTime publishedAt;
 
@@ -43,6 +52,8 @@ public class Notice {
         if (request.getBadge() != null) this.badge = request.getBadge();
         if (request.getTitle() != null) this.title = request.getTitle();
         if (request.getBody() != null) this.body = request.getBody();
+        if (request.getStatus() != null) this.status = request.getStatus();
+        if (request.getPinned() != null) this.pinned = request.getPinned();
         if (request.getPublishedAt() != null) this.publishedAt = request.getPublishedAt();
     }
 }

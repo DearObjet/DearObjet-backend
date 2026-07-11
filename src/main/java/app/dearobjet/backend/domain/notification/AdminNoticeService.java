@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -25,6 +26,8 @@ public class AdminNoticeService {
                 .badge(request.getBadge())
                 .title(request.getTitle())
                 .body(request.getBody())
+                .status(request.getStatus() != null ? request.getStatus() : NoticeStatus.PUBLISHED)
+                .pinned(request.getPinned() != null ? request.getPinned() : false)
                 .publishedAt(
                         request.getPublishedAt() != null
                                 ? request.getPublishedAt()
@@ -36,17 +39,11 @@ public class AdminNoticeService {
     }
 
     @Transactional(readOnly = true)
-    public NoticeListResponse getNotices(NoticeTarget target, NoticeCategory category, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page - 1, 0), size, Sort.by(Sort.Direction.DESC, "publishedAt"));
+    public NoticeListResponse getNotices(NoticeTarget target, NoticeCategory category, String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(page - 1, 0), size);
 
-        Page<Notice> noticePage;
-        if (target == null) {
-            noticePage = noticeRepository.findAll(pageable);
-        } else if (category == null) {
-            noticePage = noticeRepository.findByTarget(target, pageable);
-        } else {
-            noticePage = noticeRepository.findByTargetAndCategory(target, category, pageable);
-        }
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : null;
+        Page<Notice> noticePage = noticeRepository.searchForAdmin(target, category, normalizedKeyword, pageable);
 
         List<NoticeResponse> items = noticePage.getContent().stream()
                 .map(this::toResponse)
@@ -85,6 +82,8 @@ public class AdminNoticeService {
                 notice.getBadge(),
                 notice.getTitle(),
                 notice.getBody(),
+                notice.getStatus(),
+                Boolean.TRUE.equals(notice.getPinned()),
                 notice.getPublishedAt(),
                 isNew
         );

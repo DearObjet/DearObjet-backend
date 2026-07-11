@@ -14,6 +14,8 @@ public class NoticeResponse {
     private final String badge;
     private final String title;
     private final String body;
+    private final NoticeStatus status;
+    private final boolean pinned;
     private final OffsetDateTime createdAt;
     private final boolean isNew;
 }

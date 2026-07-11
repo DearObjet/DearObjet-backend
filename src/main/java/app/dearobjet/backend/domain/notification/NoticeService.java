@@ -23,9 +23,7 @@ public class NoticeService {
                 Math.max(page - 1, 0), size, Sort.by(Sort.Direction.DESC, "publishedAt")
         );
 
-        Page<Notice> noticePage = (category == null)
-                ? noticeRepository.findByTarget(target, pageable)
-                : noticeRepository.findByTargetAndCategory(target, category, pageable);
+        Page<Notice> noticePage = noticeRepository.findPublicByTarget(target, category, pageable);
 
         List<NoticeResponse> noticeResponses = new ArrayList<>();
         for (Notice notice : noticePage.getContent()) {
@@ -52,6 +50,8 @@ public class NoticeService {
                 notice.getBadge(),
                 notice.getTitle(),
                 notice.getBody(),
+                notice.getStatus(),
+                Boolean.TRUE.equals(notice.getPinned()),
                 notice.getPublishedAt(),
                 isNew
         );

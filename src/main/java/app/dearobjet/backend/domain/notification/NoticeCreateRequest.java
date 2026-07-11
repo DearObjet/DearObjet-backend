@@ -11,5 +11,7 @@ public class NoticeCreateRequest {
     private String badge;
     private String title;
     private String body;
+    private NoticeStatus status;
+    private Boolean pinned;
     private OffsetDateTime publishedAt;
 }
