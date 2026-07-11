@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/classes/*/available-slots").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/shops/map/geocode").hasRole("ADMIN")
 
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
 

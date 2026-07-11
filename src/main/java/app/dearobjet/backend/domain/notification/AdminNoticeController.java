@@ -21,10 +21,11 @@ public class AdminNoticeController {
     public ApiResponse<NoticeListResponse> getNotices(
             @RequestParam(required = false) NoticeTarget target,
             @RequestParam(required = false) NoticeCategory category,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse.of(adminNoticeService.getNotices(target, category, page, size));
+        return ApiResponse.of(adminNoticeService.getNotices(target, category, keyword, page, size));
     }
 
     @GetMapping("/notices/{noticeId}")

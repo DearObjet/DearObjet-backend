@@ -64,7 +64,7 @@ public class PostService {
                         .and(Sort.by(Sort.Direction.DESC, "postId"))
         );
 
-        Page<Post> postPage = postRepository.findByUser_Id(targetUserId, pageable);
+        Page<Post> postPage = postRepository.findVisibleByUser(targetUserId, pageable);
         return toListResponse(postPage, page);
     }
 
@@ -77,7 +77,7 @@ public class PostService {
                         .and(Sort.by(Sort.Direction.DESC, "postId"))
         );
 
-        Page<Post> postPage = postRepository.findAll(pageable);
+        Page<Post> postPage = postRepository.findAllVisible(pageable);
         return toListResponse(postPage, page);
     }
 
@@ -180,6 +180,7 @@ public class PostService {
                 post.getContent(),
                 urls,
                 post.getIsPublic(),
+                post.getBlinded(),
                 post.getCreatedAt()
         );
     }
