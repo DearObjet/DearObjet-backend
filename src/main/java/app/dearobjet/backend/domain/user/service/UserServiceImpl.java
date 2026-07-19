@@ -19,6 +19,7 @@ import app.dearobjet.backend.domain.user.repository.ArtistRepository;
 import app.dearobjet.backend.domain.user.repository.BusinessProfileRepository;
 import app.dearobjet.backend.domain.user.repository.ShopRepository;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
+import app.dearobjet.backend.global.exception.BusinessException;
 import app.dearobjet.backend.global.exception.EntityNotFoundException;
 import app.dearobjet.backend.global.exception.ErrorCode;
 import app.dearobjet.backend.global.s3.service.S3FileUploadService;
@@ -49,6 +50,10 @@ public class UserServiceImpl implements UserService {
     public User getOrCreateKakaoUser(String socialId, String email) {
         return userRepository.findBySocialId(socialId)
                 .map(user -> {
+                    if (!user.canLogin()) {
+                        throw new BusinessException(ErrorCode.LOGIN_NOT_ALLOWED_STATUS);
+                    }
+                    // 탈퇴 진행 중인 계정은 로그인 시 다시 활성화
                     user.recoverWithdrawal();
                     return user;
                 })

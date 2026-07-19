@@ -5,6 +5,7 @@ import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.service.UserService;
 import app.dearobjet.backend.global.auth.jwt.JwtProvider;
 import app.dearobjet.backend.global.auth.service.RefreshTokenRedisService;
+import app.dearobjet.backend.global.exception.BusinessException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -38,7 +39,15 @@ public class OAuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         String socialId = oAuth2User.getAttribute("id").toString();
         String email = oAuth2User.getAttribute("account_email");
 
-        User user = userService.getOrCreateKakaoUser(socialId, email);
+        User user;
+        try {
+            user = userService.getOrCreateKakaoUser(socialId, email);
+        } catch (BusinessException e) {
+            // 로그인 불가
+            response.sendRedirect(frontendBaseUrl
+                    + "/oauth/callback?error=" + e.getErrorCode().getCode());
+            return;
+        }
 
         // refresh token 발급
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
