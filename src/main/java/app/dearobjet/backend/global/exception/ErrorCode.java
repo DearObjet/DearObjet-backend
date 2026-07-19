@@ -22,6 +22,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "U002", "이미 사용 중인 이메일입니다"),
     PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT, "U003", "이미 사용 중인 전화번호입니다"),
     USER_ALREADY_REGISTERED(HttpStatus.BAD_REQUEST, "U004", "이미 가입 완료된 사용자입니다"),
+    LOGIN_NOT_ALLOWED_STATUS(HttpStatus.FORBIDDEN, "U005", "로그인할 수 없는 상태의 계정입니다"),
 
     // Chat (CH0XX)
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CH001", "채팅방을 찾을 수 없습니다"),

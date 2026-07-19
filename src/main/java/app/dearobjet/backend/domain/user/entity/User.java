@@ -84,6 +84,11 @@ public class User extends BaseTimeEntity {
         return this.userStatus == UserStatus.WITHDRAWAL_PENDING;
     }
 
+    public boolean canLogin() {
+        return this.userStatus == UserStatus.ACTIVE
+                || this.userStatus == UserStatus.WITHDRAWAL_PENDING;
+    }
+
     public void completeRegistration(
             String name,
             String phoneNumber,
