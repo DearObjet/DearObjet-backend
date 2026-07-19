@@ -24,6 +24,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByPhoneNumber(String phoneNumber);
 
+    long countByRole(Role role);
+
+    @Query("""
+            select u
+            from User u
+            where u.role <> 'ADMIN'
+              and (:role is null or u.role = :role)
+              and (
+                    :keyword is null
+                    or lower(u.name) like :keyword
+                    or lower(u.email) like :keyword
+              )
+            """)
+    Page<User> searchForAdmin(
+            @Param("role") Role role,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
     @Query(
             value = """
                     select u.id as userId,
