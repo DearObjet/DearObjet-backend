@@ -1,12 +1,19 @@
 package app.dearobjet.backend.domain.user.controller;
 
 import app.dearobjet.backend.domain.user.dto.AdminRoleCountResponse;
+import app.dearobjet.backend.domain.user.dto.AdminUserDetailResponse;
 import app.dearobjet.backend.domain.user.dto.AdminUserListResponse;
+import app.dearobjet.backend.domain.user.dto.AdminUserStatusResponse;
+import app.dearobjet.backend.domain.user.dto.AdminUserStatusUpdateRequest;
 import app.dearobjet.backend.domain.user.enums.Role;
 import app.dearobjet.backend.domain.user.service.AdminUserService;
 import app.dearobjet.backend.global.api.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,5 +37,18 @@ public class AdminUserController {
             @RequestParam(required = false) String keyword
     ) {
         return ApiResponse.of(adminUserService.getUsers(page, role, keyword));
+    }
+
+    @GetMapping("/{userId}")
+    public ApiResponse<AdminUserDetailResponse> getUser(@PathVariable Long userId) {
+        return ApiResponse.of(adminUserService.getUser(userId));
+    }
+
+    @PatchMapping("/{userId}/status")
+    public ApiResponse<AdminUserStatusResponse> updateStatus(
+            @PathVariable Long userId,
+            @Valid @RequestBody AdminUserStatusUpdateRequest request
+    ) {
+        return ApiResponse.of(adminUserService.updateStatus(userId, request.status()));
     }
 }

@@ -1,10 +1,17 @@
 package app.dearobjet.backend.domain.user.service;
 
 import app.dearobjet.backend.domain.user.dto.AdminRoleCountResponse;
+import app.dearobjet.backend.domain.user.dto.AdminUserDetailResponse;
 import app.dearobjet.backend.domain.user.dto.AdminUserListResponse;
+import app.dearobjet.backend.domain.user.dto.AdminUserStatusResponse;
 import app.dearobjet.backend.domain.user.entity.User;
 import app.dearobjet.backend.domain.user.enums.Role;
+import app.dearobjet.backend.domain.user.enums.UserStatus;
 import app.dearobjet.backend.domain.user.repository.UserRepository;
+import app.dearobjet.backend.global.exception.EntityNotFoundException;
+import app.dearobjet.backend.global.exception.ErrorCode;
+import app.dearobjet.backend.global.exception.InvalidInputException;
+import app.dearobjet.backend.global.exception.UnauthorizedException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -58,5 +65,43 @@ public class AdminUserService {
                 .toList();
 
         return new AdminUserListResponse(users, page, userPage.getTotalPages(), userPage.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminUserDetailResponse getUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getRole() == Role.ADMIN) {
+            throw new EntityNotFoundException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return AdminUserDetailResponse.from(user);
+    }
+
+    @Transactional
+    public AdminUserStatusResponse updateStatus(Long userId, UserStatus status) {
+        if (status != UserStatus.ACTIVE && status != UserStatus.INACTIVE) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "활성 또는 비활성으로만 변경할 수 있습니다.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getRole() == Role.ADMIN) {
+            throw new UnauthorizedException(ErrorCode.FORBIDDEN, "관리자 계정의 상태는 변경할 수 없습니다.");
+        }
+
+        if (user.isWithdrawalRequested() || user.isWithdrawn()) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "탈퇴 진행 중이거나 탈퇴한 회원의 상태는 변경할 수 없습니다.");
+        }
+
+        if (status == UserStatus.ACTIVE) {
+            user.activate();
+        } else {
+            user.deactivate();
+        }
+
+        return new AdminUserStatusResponse(user.getId(), user.getUserStatus());
     }
 }

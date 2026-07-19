@@ -54,8 +54,16 @@ public class User extends BaseTimeEntity {
     @Column(name = "withdrawal_requested_at")
     private LocalDateTime withdrawalRequestedAt;
 
+    public void activate() {
+        this.userStatus = UserStatus.ACTIVE;
+    }
+
     public void deactivate() {
         this.userStatus = UserStatus.INACTIVE;
+    }
+
+    public boolean isWithdrawn() {
+        return this.userStatus == UserStatus.WITHDRAWN;
     }
 
     public void requestWithdrawal() {

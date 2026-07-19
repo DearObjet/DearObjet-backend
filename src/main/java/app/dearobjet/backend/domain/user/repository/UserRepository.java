@@ -29,7 +29,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("""
             select u
             from User u
-            where (:role is null or u.role = :role)
+            where u.role <> 'ADMIN'
+              and (:role is null or u.role = :role)
               and (
                     :keyword is null
                     or lower(u.name) like :keyword

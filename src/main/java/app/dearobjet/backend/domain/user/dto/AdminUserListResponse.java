@@ -5,7 +5,8 @@ import app.dearobjet.backend.domain.user.enums.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record AdminUserListResponse(
+public record
+AdminUserListResponse(
         List<UserSummary> users,
         int page,
         int totalPages,
