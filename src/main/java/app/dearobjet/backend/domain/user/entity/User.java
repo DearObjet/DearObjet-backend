@@ -59,7 +59,7 @@ public class User extends BaseTimeEntity {
     }
 
     public void requestWithdrawal() {
-        this.userStatus = UserStatus.INACTIVE;
+        this.userStatus = UserStatus.WITHDRAWAL_PENDING;
         this.withdrawalRequestedAt = LocalDateTime.now();
     }
 
@@ -73,7 +73,7 @@ public class User extends BaseTimeEntity {
     }
 
     public boolean isWithdrawalRequested() {
-        return this.userStatus == UserStatus.INACTIVE && this.withdrawalRequestedAt != null;
+        return this.userStatus == UserStatus.WITHDRAWAL_PENDING;
     }
 
     public void completeRegistration(
