@@ -89,7 +89,7 @@ public class ClassesService {
                 Sort.by(Sort.Direction.DESC, "classesId")
         );
 
-        Page<Classes> classPage = classesRepository.findByShop_ShopId(shopId, pageable);
+        Page<Classes> classPage = classesRepository.findByShop_ShopIdAndBlindedFalse(shopId, pageable);
         List<ClassListResponse.Item> items = new ArrayList<>();
         for (Classes classes : classPage.getContent()) {
             items.add(new ClassListResponse.Item(

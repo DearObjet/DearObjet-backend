@@ -46,6 +46,14 @@ public class Classes extends BaseTimeEntity {
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
 
+    @Builder.Default
+    @Column(name = "blinded", nullable = false, columnDefinition = "boolean default false")
+    private Boolean blinded = false;
+
+    public void changeBlinded(boolean blinded) {
+        this.blinded = blinded;
+    }
+
     public void updateClassInfo(
             String className,
             String classDescription,
