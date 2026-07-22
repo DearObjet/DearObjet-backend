@@ -52,7 +52,7 @@ public class StoryService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        return getStoriesByUserId(userId, page);
+        return getStoriesByUserId(userId, page, false);
     }
 
     @Transactional(readOnly = true)
@@ -60,17 +60,19 @@ public class StoryService {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "상점을 찾을 수 없습니다."));
 
-        return getStoriesByUserId(shop.getUser().getId(), page);
+        return getStoriesByUserId(shop.getUser().getId(), page, true);
     }
 
-    private StoryListResponse getStoriesByUserId(Long userId, int page) {
+    private StoryListResponse getStoriesByUserId(Long userId, int page, boolean excludeBlinded) {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0),
                 STORY_PAGE_SIZE,
                 Sort.by(Sort.Direction.DESC, "createdAt")
                         .and(Sort.by(Sort.Direction.DESC, "storyId"))
         );
-        Page<Story> storyPage = storyRepository.findByUser_Id(userId, pageable);
+        Page<Story> storyPage = excludeBlinded
+                ? storyRepository.findByUser_IdAndBlindedFalse(userId, pageable)
+                : storyRepository.findByUser_Id(userId, pageable);
 
         List<StoryListResponse.Item> items = new ArrayList<>();
         for (Story story : storyPage.getContent()) {

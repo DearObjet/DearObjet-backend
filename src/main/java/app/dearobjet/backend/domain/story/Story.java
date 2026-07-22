@@ -43,6 +43,14 @@ public class Story extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Builder.Default
+    @Column(name = "blinded", nullable = false, columnDefinition = "boolean default false")
+    private Boolean blinded = false;
+
+    public void changeBlinded(boolean blinded) {
+        this.blinded = blinded;
+    }
+
     public void update(String title, String content, String thumbnailImageUrl) {
         this.title = title;
         this.content = content;
