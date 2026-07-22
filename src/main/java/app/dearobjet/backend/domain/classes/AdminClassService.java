@@ -48,30 +48,28 @@ public class AdminClassService {
 
     @Transactional(readOnly = true)
     public AdminClassDetailResponse getClass(Long classId) {
-        Classes classes = classesRepository.findById(classId)
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
-
-        return new AdminClassDetailResponse(
-                classes.getClassesId(),
-                classes.getClassName(),
-                classes.getShop().getShopName(),
-                classes.getCreatedAt(),
-                Boolean.TRUE.equals(classes.getBlinded()),
-                classes.getClassDescription(),
-                List.copyOf(classes.getClassImageUrls()),
-                classes.getPrice(),
-                classes.getMaxCapacity(),
-                classes.getNotes()
-        );
+        return toDetailResponse(findClass(classId));
     }
 
     @Transactional
     public AdminClassDetailResponse updateBlinded(Long classId, boolean blinded) {
-        Classes classes = classesRepository.findById(classId)
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
-
+        Classes classes = findClass(classId);
         classes.changeBlinded(blinded);
 
+        return toDetailResponse(classes);
+    }
+
+    @Transactional
+    public void deleteClass(Long classId) {
+        classesRepository.delete(findClass(classId));
+    }
+
+    private Classes findClass(Long classId) {
+        return classesRepository.findById(classId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
+    }
+
+    private AdminClassDetailResponse toDetailResponse(Classes classes) {
         return new AdminClassDetailResponse(
                 classes.getClassesId(),
                 classes.getClassName(),

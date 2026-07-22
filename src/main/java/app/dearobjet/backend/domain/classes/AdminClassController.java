@@ -6,6 +6,7 @@ import app.dearobjet.backend.domain.classes.dto.AdminClassListResponse;
 import app.dearobjet.backend.global.api.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,5 +41,11 @@ public class AdminClassController {
             @Valid @RequestBody AdminClassBlindUpdateRequest request
     ) {
         return ApiResponse.of(adminClassService.updateBlinded(classId, request.blinded()));
+    }
+
+    @DeleteMapping("/{classId}")
+    public ApiResponse<Void> deleteClass(@PathVariable Long classId) {
+        adminClassService.deleteClass(classId);
+        return ApiResponse.of(null);
     }
 }
