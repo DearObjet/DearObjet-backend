@@ -51,7 +51,13 @@ public enum ErrorCode {
     PRODUCT_STOCK_CONFLICT(HttpStatus.CONFLICT, "P001", "상품 재고가 이미 변경되었습니다"),
 
     // Payment (PAY0XX)
-    PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "PAY001", "결제 승인에 실패했습니다");
+    PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "PAY001", "결제 승인에 실패했습니다"),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAY002", "결제 정보를 찾을 수 없습니다"),
+    PAYMENT_CANCEL_FAILED(HttpStatus.BAD_GATEWAY, "PAY003", "결제 취소에 실패했습니다"),
+
+    // Order (O0XX)
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "O001", "주문을 찾을 수 없습니다"),
+    ORDER_ACCESS_DENIED(HttpStatus.FORBIDDEN, "O002", "본인 주문만 접근할 수 있습니다");
 
     private final HttpStatus status;
     private final String code;

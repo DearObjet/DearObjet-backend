@@ -42,7 +42,7 @@ public class AdminNoticeService {
     public NoticeListResponse getNotices(NoticeTarget target, NoticeCategory category, String keyword, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(page - 1, 0), size);
 
-        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : null;
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : "";
         Page<Notice> noticePage = noticeRepository.searchForAdmin(target, category, normalizedKeyword, pageable);
 
         List<NoticeResponse> items = noticePage.getContent().stream()

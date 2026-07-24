@@ -34,7 +34,7 @@ public class AdminPostService {
                 Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "postId"))
         );
 
-        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : null;
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : "";
         Page<Post> postPage = postRepository.searchForAdmin(normalizedKeyword, pageable);
 
         List<AdminPostListResponse.Item> items = postPage.getContent().stream()

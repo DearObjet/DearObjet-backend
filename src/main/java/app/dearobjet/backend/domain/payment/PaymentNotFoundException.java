@@ -1,7 +1,10 @@
 package app.dearobjet.backend.domain.payment;
 
-public class PaymentNotFoundException extends RuntimeException {
+import app.dearobjet.backend.global.exception.BusinessException;
+import app.dearobjet.backend.global.exception.ErrorCode;
+
+public class PaymentNotFoundException extends BusinessException {
     public PaymentNotFoundException(Long id) {
-        super("결제 정보를 찾을 수 없습니다. paymentId=" + id);
+        super(ErrorCode.PAYMENT_NOT_FOUND, "결제 정보를 찾을 수 없습니다. paymentId=" + id);
     }
 }
