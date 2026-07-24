@@ -119,7 +119,7 @@ class StoryServiceTest {
                 .build();
 
         given(shopRepository.findById(10L)).willReturn(Optional.of(shop));
-        given(storyRepository.findByUser_Id(any(), any()))
+        given(storyRepository.findByUser_IdAndBlindedFalse(any(), any()))
                 .willReturn(new PageImpl<>(List.of(story)));
 
         StoryListResponse response = storyService.getStoriesByShop(10L, 1);

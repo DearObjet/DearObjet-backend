@@ -2,6 +2,7 @@ package app.dearobjet.backend.domain.notification;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.OffsetDateTime;
 
@@ -36,7 +37,8 @@ public class Notice {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    @Column(nullable = false, columnDefinition = "varchar(20) default 'PUBLISHED'")
+    @Column(nullable = false, length = 20)
+    @ColumnDefault("'PUBLISHED'")
     private NoticeStatus status = NoticeStatus.PUBLISHED;   // DRAFT | PUBLISHED | HIDDEN
 
     @Builder.Default

@@ -10,6 +10,7 @@ import app.dearobjet.backend.domain.payment.entity.*;
 import app.dearobjet.backend.domain.payment.toss.TossPaymentsClient;
 import app.dearobjet.backend.domain.payment.toss.TossPaymentsProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -117,7 +119,11 @@ public class PaymentService {
 
         Long cancelAmount = (req.getAmount() == null) ? payment.getAmount() : req.getAmount();
 
-        tossClient.cancel(payment.getPaymentKey(), cancelAmount, req.getReason());
+        try {
+            tossClient.cancel(payment.getPaymentKey(), cancelAmount, req.getReason());
+        } catch (Exception e) {
+            throw new PaymentCancelException(e);
+        }
         payment.markCanceled();
         order.cancel(req.getReason() == null ? "USER_CANCEL" : req.getReason());
     }
@@ -131,7 +137,13 @@ public class PaymentService {
 
         if (payment.isTerminal()) return;
 
-        TossPaymentResponse tossPayment = tossClient.getPayment(paymentKey);
+        TossPaymentResponse tossPayment;
+        try {
+            tossPayment = tossClient.getPayment(paymentKey);
+        } catch (Exception e) {
+            log.warn("토스 웹훅 처리 중 결제 조회 실패. paymentKey={}", paymentKey, e);
+            return;
+        }
         String status = tossPayment == null ? null : tossPayment.getStatus();
         String orderId = tossPayment == null ? null : tossPayment.getOrderId();
         Long totalAmount = tossPayment == null ? null : tossPayment.getTotalAmount();

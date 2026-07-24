@@ -12,7 +12,7 @@ public interface NoticeRepository extends JpaRepository<Notice,Long> {
     @Query("select n from Notice n where "
             + "(:target is null or n.target = :target) and "
             + "(:category is null or n.category = :category) and "
-            + "(:keyword is null or lower(n.title) like lower(concat('%', :keyword, '%'))) "
+            + "lower(n.title) like lower(concat('%', :keyword, '%')) "
             + "order by case when n.pinned = true then 0 else 1 end, n.publishedAt desc")
     Page<Notice> searchForAdmin(@Param("target") NoticeTarget target,
                                 @Param("category") NoticeCategory category,
