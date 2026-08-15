@@ -21,13 +21,15 @@ public class AdminClassService {
     private static final int PAGE_SIZE = 20;
 
     private final ClassesRepository classesRepository;
+    private final ClassReservationRepository classReservationRepository;
+    private final ClassSessionRepository classSessionRepository;
 
     @Transactional(readOnly = true)
     public AdminClassListResponse getClasses(int page, String keyword) {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0),
                 PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "classesId"))
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
         );
 
         String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.strip() : "";
@@ -35,7 +37,7 @@ public class AdminClassService {
 
         List<AdminClassListResponse.ClassSummary> classes = classPage.getContent().stream()
                 .map(classItem -> new AdminClassListResponse.ClassSummary(
-                        classItem.getClassesId(),
+                        classItem.getId(),
                         classItem.getClassName(),
                         classItem.getShop().getShopName(),
                         classItem.getCreatedAt(),
@@ -61,7 +63,13 @@ public class AdminClassService {
 
     @Transactional
     public void deleteClass(Long classId) {
-        classesRepository.delete(findClass(classId));
+        Classes classes = findClass(classId);
+
+        // FK 제약 때문에 자식 데이터부터 삭제
+        classReservationRepository.deleteByClasses_Id(classId);
+        classSessionRepository.deleteByClasses_Id(classId);
+
+        classesRepository.delete(classes);
     }
 
     private Classes findClass(Long classId) {
@@ -71,7 +79,7 @@ public class AdminClassService {
 
     private AdminClassDetailResponse toDetailResponse(Classes classes) {
         return new AdminClassDetailResponse(
-                classes.getClassesId(),
+                classes.getId(),
                 classes.getClassName(),
                 classes.getShop().getShopName(),
                 classes.getCreatedAt(),

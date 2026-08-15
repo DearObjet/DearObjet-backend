@@ -248,7 +248,7 @@ public class ClassReservationService {
         // 슬롯은 영업시간 기준으로 class_sessions 에 동기화한 뒤 응답에 사용한다.
         List<ClassSession> sessions = syncSessions(classes, date, openMinutes, closeMinutes);
 
-        List<ClassReservation> reservations = classReservationRepository.findByClasses_ClassesIdAndReservationTimeBetween(
+        List<ClassReservation> reservations = classReservationRepository.findByClasses_IdAndReservationTimeBetween(
                 classId,
                 date.atStartOfDay(),
                 date.plusDays(1).atStartOfDay().minusNanos(1)
@@ -297,8 +297,8 @@ public class ClassReservationService {
 
     private List<ClassSession> syncSessions(Classes classes, LocalDate date, int openMinutes, int closeMinutes) {
         List<ClassSession> existingSessions = classSessionRepository
-                .findByClasses_ClassesIdAndStartDatetimeBetweenOrderByStartDatetimeAsc(
-                        classes.getClassesId(),
+                .findByClasses_IdAndStartDatetimeBetweenOrderByStartDatetimeAsc(
+                        classes.getId(),
                         date.atStartOfDay(),
                         date.plusDays(1).atStartOfDay().minusNanos(1)
                 );
@@ -362,7 +362,7 @@ public class ClassReservationService {
             );
         }
 
-        if (!session.getClasses().getClassesId().equals(classes.getClassesId())) {
+        if (!session.getClasses().getId().equals(classes.getId())) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT, "클래스와 예약 슬롯이 일치하지 않습니다.");
         }
 

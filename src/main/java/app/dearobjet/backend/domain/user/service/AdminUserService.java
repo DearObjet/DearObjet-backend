@@ -92,11 +92,16 @@ public class AdminUserService {
             throw new UnauthorizedException(ErrorCode.FORBIDDEN, "관리자 계정의 상태는 변경할 수 없습니다.");
         }
 
-        if (user.isWithdrawalRequested() || user.isWithdrawn()) {
-            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "탈퇴 진행 중이거나 탈퇴한 회원의 상태는 변경할 수 없습니다.");
+        if (user.isWithdrawn()) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT, "탈퇴한 회원의 상태는 변경할 수 없습니다.");
         }
 
-        if (status == UserStatus.ACTIVE) {
+        if (user.isWithdrawalRequested()) {
+            if (status != UserStatus.ACTIVE) {
+                throw new InvalidInputException(ErrorCode.INVALID_INPUT, "탈퇴 진행 중인 회원은 탈퇴 취소만 가능합니다.");
+            }
+            user.recoverWithdrawal();
+        } else if (status == UserStatus.ACTIVE) {
             user.activate();
         } else {
             user.deactivate();

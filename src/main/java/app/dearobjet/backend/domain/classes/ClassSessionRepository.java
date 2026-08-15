@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 
 public interface ClassSessionRepository extends JpaRepository<ClassSession, Long> {
 
-    List<ClassSession> findByClasses_ClassesIdAndStartDatetimeBetweenOrderByStartDatetimeAsc(
+    List<ClassSession> findByClasses_IdAndStartDatetimeBetweenOrderByStartDatetimeAsc(
             Long classId,
             LocalDateTime start,
             LocalDateTime end
@@ -22,4 +22,6 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ClassSession> findBySessionId(Long sessionId);
+
+    void deleteByClasses_Id(Long classId);
 }

@@ -20,7 +20,7 @@ public class Classes extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "classes_id")
-    private Long classesId;
+    private Long id;
 
     @Column(name = "class_name")
     private String className;

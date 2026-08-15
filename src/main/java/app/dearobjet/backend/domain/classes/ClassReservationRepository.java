@@ -38,8 +38,8 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
     @EntityGraph(attributePaths = {"classes", "classes.shop"})
     Optional<ClassReservation> findByReservationIdAndClasses_Shop_User_Id(Long reservationId, Long userId);
 
-    List<ClassReservation> findByClasses_ClassesIdAndReservationTimeBetween(
-            Long classesId,
+    List<ClassReservation> findByClasses_IdAndReservationTimeBetween(
+            Long classId,
             LocalDateTime start,
             LocalDateTime end
     );
@@ -59,4 +59,6 @@ public interface ClassReservationRepository extends JpaRepository<ClassReservati
             and r.reservationStatus <> app.dearobjet.backend.domain.classes.ClassReservationStatus.CANCELED
             """)
     long countActiveReservationsBySessionId(@Param("sessionId") Long sessionId);
+
+    void deleteByClasses_Id(Long classId);
 }

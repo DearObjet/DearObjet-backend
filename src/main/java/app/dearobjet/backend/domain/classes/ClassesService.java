@@ -27,6 +27,8 @@ public class ClassesService {
     private static final int MAX_CLASS_IMAGE_COUNT = 5;
 
     private final ClassesRepository classesRepository;
+    private final ClassReservationRepository classReservationRepository;
+    private final ClassSessionRepository classSessionRepository;
     private final ShopRepository shopRepository;
     private final S3FileUploadService s3FileUploadService;
 
@@ -59,14 +61,14 @@ public class ClassesService {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0),
                 size,
-                Sort.by(Sort.Direction.DESC, "classesId")
+                Sort.by(Sort.Direction.DESC, "id")
         );
 
         Page<Classes> classPage = classesRepository.findByShop_User_Id(userId, pageable);
         List<ClassListResponse.Item> items = new ArrayList<>();
         for (Classes classes : classPage.getContent()) {
             items.add(new ClassListResponse.Item(
-                    classes.getClassesId(),
+                    classes.getId(),
                     classes.getClassName(),
                     classes.getClassDescription(),
                     getFirstImageUrl(classes),
@@ -86,14 +88,14 @@ public class ClassesService {
         Pageable pageable = PageRequest.of(
                 Math.max(page - 1, 0),
                 size,
-                Sort.by(Sort.Direction.DESC, "classesId")
+                Sort.by(Sort.Direction.DESC, "id")
         );
 
         Page<Classes> classPage = classesRepository.findByShop_ShopIdAndBlindedFalse(shopId, pageable);
         List<ClassListResponse.Item> items = new ArrayList<>();
         for (Classes classes : classPage.getContent()) {
             items.add(new ClassListResponse.Item(
-                    classes.getClassesId(),
+                    classes.getId(),
                     classes.getClassName(),
                     classes.getClassDescription(),
                     getFirstImageUrl(classes),
@@ -107,7 +109,7 @@ public class ClassesService {
 
     @Transactional(readOnly = true)
     public ClassResponse getMyClass(Long userId, Long classId) {
-        Classes classes = classesRepository.findByClassesIdAndShop_User_Id(classId, userId)
+        Classes classes = classesRepository.findByIdAndShop_User_Id(classId, userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
         return toResponse(classes);
     }
@@ -119,7 +121,7 @@ public class ClassesService {
             UpdateClassRequest request,
             List<MultipartFile> classImageFiles
     ) {
-        Classes classes = classesRepository.findByClassesIdAndShop_User_Id(classId, userId)
+        Classes classes = classesRepository.findByIdAndShop_User_Id(classId, userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
 
         classes.updateClassInfo(
@@ -140,14 +142,19 @@ public class ClassesService {
 
     @Transactional
     public void deleteClass(Long userId, Long classId) {
-        Classes classes = classesRepository.findByClassesIdAndShop_User_Id(classId, userId)
+        Classes classes = classesRepository.findByIdAndShop_User_Id(classId, userId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND, "클래스를 찾을 수 없습니다."));
+
+        // FK 제약 때문에 자식 데이터부터 삭제
+        classReservationRepository.deleteByClasses_Id(classId);
+        classSessionRepository.deleteByClasses_Id(classId);
+
         classesRepository.delete(classes);
     }
 
     private ClassResponse toResponse(Classes classes) {
         return new ClassResponse(
-                classes.getClassesId(),
+                classes.getId(),
                 classes.getClassName(),
                 classes.getClassDescription(),
                 List.copyOf(classes.getClassImageUrls()),

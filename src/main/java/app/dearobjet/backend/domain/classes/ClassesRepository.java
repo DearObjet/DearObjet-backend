@@ -18,7 +18,7 @@ public interface ClassesRepository extends JpaRepository<Classes, Long> {
     Page<Classes> findByShop_ShopIdAndBlindedFalse(Long shopId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"shop", "shop.user"})
-    Optional<Classes> findByClassesIdAndShop_User_Id(Long classesId, Long userId);
+    Optional<Classes> findByIdAndShop_User_Id(Long classId, Long userId);
 
     @EntityGraph(attributePaths = {"shop", "shop.businessProfile"})
     @Query("select c from Classes c where "
